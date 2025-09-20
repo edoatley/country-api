@@ -1,0 +1,435 @@
+openapi: 3.0.3
+info:
+  title: Country Reference Service
+  description: |
+    A microservice designed to provide and manage country data.
+    This service acts as a centralized source of truth for country information,
+    supporting a full change history for all data entities. 
+    
+    **Key Design Notes:**
+    - **Primary Identifier**: The ISO `alpha2Code` is the primary identifier for all resources. All mutation operations (PUT, DELETE) must use the `/countries/code/{alpha2Code}` path.
+    - **Versioning**: Every update creates a new version of the country record, and the full history is accessible via the history endpoint.
+  version: 1.1.0
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+tags:
+  - name: Country
+    description: Operations related to country data management.
+
+paths:  
+  /countries:
+    get:
+      tags:
+        - Country
+      summary: Get All Countries (Paginated)
+      description: Retrieves a paginated list of the latest version of all country records.
+      operationId: getAllCountries
+      parameters:
+        - name: limit
+          in: query
+          description: The maximum number of countries to return.
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          description: The number of countries to skip before starting to collect the result set.
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: A paginated list of countries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Country'
+              examples:
+                default:
+                  value:
+                    - name: "United Kingdom"
+                      alpha2Code: "GB"
+                      alpha3Code: "GBR"
+                      numericCode: "826"
+                      createDate: "2025-09-20T15:20:05Z"
+                      expiryDate: null
+                      isDeleted: false
+                    - name: "United States of America"
+                      alpha2Code: "US"
+                      alpha3Code: "USA"
+                      numericCode: "840"
+                      createDate: "2025-01-10T10:00:00Z"
+                      expiryDate: null
+                      isDeleted: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - Country
+      summary: Create a New Country
+      description: Adds a new country record to the system. The combination of alpha2, alpha3, and numeric codes must be unique.
+      operationId: createCountry
+      requestBody:
+        $ref: '#/components/requestBodies/CountryBody'
+      responses:
+        '201':
+          description: Country created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Country'
+              examples:
+                createdUK:
+                  $ref: '#/components/examples/CountryUK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Conflict. A country with the given code(s) already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /countries/code/{alpha2Code}:
+    parameters:
+      - name: alpha2Code
+        in: path
+        required: true
+        description: The ISO 3166-1 alpha-2 code of the country (e.g., "GB"). This is the primary identifier for the resource.
+        schema:
+          type: string
+          pattern: '^[A-Z]{2}$'
+          example: "GB"
+    get:
+      tags:
+        - Country
+      summary: Get Country by 2-Letter Code
+      description: Retrieves the latest version of a country by its ISO 3166-1 alpha-2 code.
+      operationId: getCountryByAlpha2Code
+      responses:
+        '200':
+          description: The requested country data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Country'
+              examples:
+                countryUK:
+                  $ref: '#/components/examples/CountryUK'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags:
+        - Country
+      summary: Update an Existing Country
+      description: Modifies an existing country record using its primary `alpha2Code` identifier. This action creates a new version of the data.
+      operationId: updateCountryByAlpha2Code
+      requestBody:
+        $ref: '#/components/requestBodies/CountryBody'
+      responses:
+        '200':
+          description: Country updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Country'
+              examples:
+                countryUK:
+                  $ref: '#/components/examples/CountryUK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - Country
+      summary: Logically Delete a Country
+      description: Marks a country record as deleted using its primary `alpha2Code` identifier. This is a logical deletion; the record and its history are preserved.
+      operationId: deleteCountryByAlpha2Code
+      responses:
+        '204':
+          description: Country deleted successfully.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /countries/code/{alpha2Code}/history:
+    parameters:
+      - name: alpha2Code
+        in: path
+        required: true
+        description: The ISO 3166-1 alpha-2 code of the country (e.g., "GB").
+        schema:
+          type: string
+          pattern: '^[A-Z]{2}$'
+          example: "GB"
+    get:
+      tags:
+        - Country
+      summary: Get Country Version History
+      description: Retrieves the complete, ordered version history for a specific country.
+      operationId: getCountryHistoryByAlpha2Code
+      responses:
+        '200':
+          description: A list of all versions of the country, ordered from newest to oldest.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Country'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /countries/code3/{alpha3Code}:
+    parameters:
+      - name: alpha3Code
+        in: path
+        required: true
+        description: The ISO 3166-1 alpha-3 code of the country (e.g., "GBR").
+        schema:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          example: "GBR"
+    get:
+      tags:
+        - Country
+      summary: Get Country by 3-Letter Code
+      description: Retrieves the latest version of a country by its ISO 3166-1 alpha-3 code.
+      operationId: getCountryByAlpha3Code
+      responses:
+        '200':
+          description: The requested country data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Country'
+              examples:
+                countryUK:
+                  $ref: '#/components/examples/CountryUK'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /countries/number/{numericCode}:
+    parameters:
+      - name: numericCode
+        in: path
+        required: true
+        description: The ISO 3166-1 numeric code of the country (e.g., "826").
+        schema:
+          type: string
+          pattern: '^[0-9]{3}$'
+          example: "826"
+    get:
+      tags:
+        - Country
+      summary: Get Country by Numeric Code
+      description: Retrieves the latest version of a country by its ISO 3166-1 numeric code.
+      operationId: getCountryByNumericCode
+      responses:
+        '200':
+          description: The requested country data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Country'
+              examples:
+                countryUK:
+                  $ref: '#/components/examples/CountryUK'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+# -----------------------------------------------------------------------------
+#  Component Definitions
+# -----------------------------------------------------------------------------
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+      description: API Key for authenticating requests.
+
+  schemas:
+    CountryInput:
+      type: object
+      description: The data required to create or update a country.
+      properties:
+        name:
+          type: string
+          description: The official name of the country.
+        alpha2Code:
+          type: string
+          description: The ISO 3166-1 alpha-2 code.
+          pattern: '^[A-Z]{2}$'
+        alpha3Code:
+          type: string
+          description: The ISO 3166-1 alpha-3 code.
+          pattern: '^[A-Z]{3}$'
+        numericCode:
+          type: string
+          description: The ISO 3166-1 numeric code.
+          pattern: '^[0-9]{3}$'
+      required:
+        - name
+        - alpha2Code
+        - alpha3Code
+        - numericCode
+      example:
+        name: "United Kingdom"
+        alpha2Code: "GB"
+        alpha3Code: "GBR"
+        numericCode: "826"
+    Country:
+      type: object
+      description: Represents a country record, including system-generated fields.
+      properties:
+        name:
+          type: string
+          description: The official name of the country.
+        alpha2Code:
+          type: string
+          description: The ISO 3166-1 alpha-2 code.
+          pattern: '^[A-Z]{2}$'
+        alpha3Code:
+          type: string
+          description: The ISO 3166-1 alpha-3 code.
+          pattern: '^[A-Z]{3}$'
+        numericCode:
+          type: string
+          description: The ISO 3166-1 numeric code.
+          pattern: '^[0-9]{3}$'
+        createDate:
+          type: string
+          format: date-time
+          description: The UTC timestamp when this version of the record was created.
+          readOnly: true
+        expiryDate:
+          type: string
+          format: date-time
+          description: The UTC timestamp when this version of the record became obsolete. Null for the current active version.
+          readOnly: true
+          nullable: true
+        isDeleted:
+          type: boolean
+          description: Flag indicating if the country is logically deleted.
+          readOnly: true
+          default: false
+      required:
+        - name
+        - alpha2Code
+        - alpha3Code
+        - numericCode
+        - createDate
+        - isDeleted
+    Error:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          format: int32
+        error:
+          type: string
+        message:
+          type: string
+          description: A human-readable description of the error.
+        path:
+          type: string
+      required:
+        - timestamp
+        - status
+        - error
+        - message
+      example:
+        timestamp: "2025-09-20T15:23:42.123Z"
+        status: 404
+        error: "Not Found"
+        message: "Country with alpha2Code 'XX' not found."
+        path: "/api/v1/countries/code/XX"
+
+  requestBodies:
+    CountryBody:
+      description: The country object for create or update operations.
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CountryInput'
+
+  responses:
+    BadRequest:
+      description: Bad Request. The request was malformed or contained invalid data (e.g., validation error).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized. The API key is missing or invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Not Found. The requested resource does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: Internal Server Error. An unexpected error occurred on the server.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  examples:
+    CountryUK:
+      summary: Example for United Kingdom
+      value:
+        name: "United Kingdom"
+        alpha2Code: "GB"
+        alpha3Code: "GBR"
+        numericCode: "826"
+        createDate: "2025-09-20T15:20:05Z"
+        expiryDate: null
+        isDeleted: false
