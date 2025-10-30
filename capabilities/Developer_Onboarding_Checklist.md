@@ -34,5 +34,6 @@ Use this checklist to go from clone to running, testing, and deploying locally.
 
 ## Key Notes
 - Always use `./gradlew` for builds and runs (the wrapper is checked in to git)
+- Architecture rules (ArchUnit) run with `./gradlew build` and will fail on boundary violations
 - If you ever see missing wrapper errors (e.g., missing JAR or script), re-run `gradle wrapper` and commit the missing files
 - The CI/CD pipeline (see GitHub Actions) only works with the wrapper
