@@ -16,7 +16,7 @@ This project adopts Hexagonal Architecture, breaking the codebase into four inde
 - `./gradlew clean build` – Compile and run checks on all modules (Java 21 required).
 
 ### Running Hello World
-```bash
+```bash  
 ./gradlew :country-service-bootstrap:run
 ```
 Expected output:
