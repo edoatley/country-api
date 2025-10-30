@@ -1,0 +1,17 @@
+plugins {
+    id 'java'
+}
+
+allprojects {
+    group = 'com.example.country'
+    version = '0.1.0-SNAPSHOT'
+}
+
+subprojects {
+    apply plugin: 'java'
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+    repositories {
+        mavenCentral()
+    }
+}

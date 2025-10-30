@@ -1,0 +1,5 @@
+rootProject.name = 'country-service'
+include 'country-service-domain'
+include 'country-service-application'
+include 'country-service-adapters'
+include 'country-service-bootstrap'
