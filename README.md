@@ -1,5 +1,7 @@
 # Country Reference Service
 
+> **Note**: The Gradle wrapper (`./gradlew`) is included in the repo so all builds and runs (locally and in CI) should use this script—no need to install Gradle manually.
+
 ## Sprint Zero: Project Scaffold and Local Development Setup
 
 This project adopts Hexagonal Architecture, breaking the codebase into four independent modules to ensure testability and maintainability.
@@ -32,4 +34,4 @@ Hello from Country Reference Service (Sprint Zero)!
 ### Documentation
 - Planning docs, product requirements, architectural decisions, and onboarding guides can be found in the `capabilities/` folder.
 
-For future updates: This README should be kept aligned with code and onboarding as project structure and setup evolve.
+For future updates: This README should be kept aligned with code and onboarding as project structure and setup evolves.

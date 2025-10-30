@@ -31,3 +31,8 @@ Use this checklist to go from clone to running, testing, and deploying locally.
 - Build issues: try `./gradlew clean build --refresh-dependencies`
 - Problems with CI: see logs under GitHub Actions tab
 - Next features and fixes should update both this checklist and `README.md` for consistency
+
+## Key Notes
+- Always use `./gradlew` for builds and runs (the wrapper is checked in to git)
+- If you ever see missing wrapper errors (e.g., missing JAR or script), re-run `gradle wrapper` and commit the missing files
+- The CI/CD pipeline (see GitHub Actions) only works with the wrapper
