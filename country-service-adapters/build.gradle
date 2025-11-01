@@ -3,4 +3,9 @@ plugins {
 }
 dependencies {
     implementation project(':country-service-application')
+    implementation platform('software.amazon.awssdk:bom:2.21.0')
+    implementation 'software.amazon.awssdk:dynamodb'
+    testImplementation 'org.testcontainers:testcontainers:1.19.0'
+    testImplementation 'org.testcontainers:localstack:1.19.0'
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.0'
 }
