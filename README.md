@@ -1,48 +1,180 @@
 # Country Reference Service
 
-> **Note**: The Gradle wrapper (`./gradlew`) is included in the repo so all builds and runs (locally and in CI) should use this script—no need to install Gradle manually.
+A microservice API providing country reference data with full change history and versioning. Built using Hexagonal Architecture to ensure clean separation of concerns and technology independence.
 
-## Sprint Zero: Project Scaffold and Local Development Setup
+## Overview
 
-This project adopts Hexagonal Architecture, breaking the codebase into four independent modules to ensure testability and maintainability.
+The Country Reference Service is a RESTful API that serves as the single source of truth for ISO 3166 country information. It provides:
 
-### Directory Structure
-- `country-service-domain` – Pure domain model (no dependencies).
-- `country-service-application` – Application use cases and ports (depends on domain).
-- `country-service-adapters` – Infrastructure (e.g., REST, persistence) (depends on application).
-- `country-service-bootstrap` – Application entry point and wiring (depends on adapters).
+- **Full CRUD Operations**: Create, read, update, and logical delete country records
+- **Multiple Lookup Methods**: Query by ISO 3166-1 alpha-2, alpha-3, or numeric codes
+- **Version History**: Complete audit trail of all changes with full version history retrieval
+- **Logical Deletion**: Soft deletes preserve data and history for compliance
+- **API Authentication**: Protected endpoints using API key authentication
 
-### Building
-- `./gradlew clean build` – Compile and run checks on all modules (Java 21 required).
+## Architecture
 
-### Running Hello World
-```bash  
-./gradlew :country-service-bootstrap:run
-```
-Expected output:
-```
-Hello from Country Reference Service (Sprint Zero)!
-```
+This project follows **Hexagonal Architecture (Ports & Adapters)** with clear module boundaries:
 
-### Local Development with LocalStack (Sprint 3)
-- Start LocalStack with Docker Compose:
+- **`country-service-domain`** – Pure domain model with zero external dependencies
+- **`country-service-application`** – Business logic and use cases (depends only on domain)
+- **`country-service-adapters`** – Infrastructure implementations (REST, DynamoDB, Lambda)
+- **`country-service-bootstrap`** – Application wiring and Spring Boot configuration
+
+See [Architecture Decision Records](capabilities/ADRs/README.md) for detailed architectural rationale.
+
+## Quick Start
+
+### Prerequisites
+
+- JDK 21 (Temurin recommended)
+- Docker (for LocalStack)
+- Git
+
+### Build and Run
+
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   cd country-api
+   ```
+
+2. **Build the project:**
+   ```bash
+   ./gradlew clean build
+   ```
+
+3. **Start LocalStack** (for local DynamoDB):
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Set environment variables:**
+   ```bash
+   export AWS_ENDPOINT_URL=http://localhost:4566
+   export AWS_ACCESS_KEY_ID=test
+   export AWS_SECRET_ACCESS_KEY=test
+   export AWS_REGION=us-east-1
+   export API_KEY=default-test-key
+   ```
+
+5. **Run the application:**
+   ```bash
+   ./gradlew :country-service-bootstrap:bootRun
+   ```
+
+6. **Verify it's running:**
+   ```bash
+   curl -H "X-API-KEY: default-test-key" http://localhost:8080/api/v1/countries
+   ```
+
+## API Documentation
+
+The API follows the [OpenAPI 3.0 specification](openapi.yml). Key endpoints:
+
+- `GET /api/v1/countries` – List all countries (paginated)
+- `GET /api/v1/countries/code/{alpha2Code}` – Get country by 2-letter code
+- `GET /api/v1/countries/code3/{alpha3Code}` – Get country by 3-letter code
+- `GET /api/v1/countries/number/{numericCode}` – Get country by numeric code
+- `GET /api/v1/countries/code/{alpha2Code}/history` – Get version history
+- `POST /api/v1/countries` – Create new country
+- `PUT /api/v1/countries/code/{alpha2Code}` – Update country (creates new version)
+- `DELETE /api/v1/countries/code/{alpha2Code}` – Logical delete
+
+All endpoints require the `X-API-KEY` header for authentication.
+
+See [openapi.yml](openapi.yml) for complete API contract and examples.
+
+## Local Development
+
+### Running Tests
+
+- **Unit tests:** `./gradlew test`
+- **Integration tests:** `./gradlew test` (uses Testcontainers with LocalStack)
+- **Architecture tests:** `./gradlew test` (ArchUnit boundary enforcement)
+
+### LocalStack Setup
+
+The project uses LocalStack for local AWS service emulation:
+
 ```bash
-docker-compose up -d
+docker-compose up -d    # Start LocalStack
+docker-compose down     # Stop LocalStack
 ```
-- Set environment variables for AWS SDK (LocalStack endpoint):
-```bash
-export AWS_ENDPOINT_URL=http://localhost:4566
-export AWS_ACCESS_KEY_ID=test
-export AWS_SECRET_ACCESS_KEY=test
-export AWS_REGION=us-east-1
+
+Integration tests automatically spin up LocalStack containers using Testcontainers.
+
+See [Developer Onboarding Checklist](capabilities/Developer_Onboarding_Checklist.md) for complete setup instructions.
+
+## Project Structure
+
 ```
-- Integration tests use Testcontainers to automatically spin up LocalStack containers during test execution.
-- See [capabilities/Developer_Onboarding_Checklist.md](capabilities/Developer_Onboarding_Checklist.md) for complete setup steps.
+country-api/
+├── country-service-domain/          # Domain model (Country record)
+├── country-service-application/      # Business logic and ports
+├── country-service-adapters/        # REST, DynamoDB, Lambda adapters
+├── country-service-bootstrap/        # Spring Boot application
+├── capabilities/                     # Documentation and capability breakdowns
+│   ├── ADRs/                        # Architecture Decision Records
+│   └── ...
+├── docker-compose.yml               # LocalStack configuration
+└── openapi.yml                      # API specification
+```
 
-### CI/CD
-- A GitHub Actions workflow will be set up to run build/test for all PRs (see [Release and Deployment Guide](capabilities/Release_and_Deployment_Guide.md)).
+## Documentation
 
-### Documentation
-- Planning docs, product requirements, architectural decisions, and onboarding guides can be found in the `capabilities/` folder.
+Comprehensive documentation is organized in the `capabilities/` directory:
 
-For future updates: This README should be kept aligned with code and onboarding as project structure and setup evolves.
+- **[Product Requirements Breakdown](PRODUCT_REQUIREMENTS.md)** – Complete PRD with all requirements
+- **[Architecture Decision Records](capabilities/ADRs/README.md)** – Architectural choices and rationale
+- **[Developer Onboarding Checklist](capabilities/Developer_Onboarding_Checklist.md)** – Step-by-step setup guide
+- **[Release & Deployment Guide](capabilities/Release_and_Deployment_Guide.md)** – CI/CD and deployment process
+- **[Progress Summary](PROGRESS_SUMMARY.md)** – Sprint-by-sprint implementation status
+- **[Glossary & Conventions](capabilities/Glossary_and_Conventions.md)** – Terminology and naming standards
+
+### Capability Breakdowns
+
+- [Domain Model & Architecture](capabilities/Capability_Domain_Model_and_Architecture.md)
+- [REST API Endpoints](capabilities/Capability_REST_API_Endpoints.md)
+- [DynamoDB Persistence](capabilities/Capability_Persistence_DynamoDB.md)
+- [Authentication & Error Handling](capabilities/Capability_Authentication_ErrorHandling.md)
+- [Testing & Local Development](capabilities/Capability_Testing_LocalDev.md)
+- [Documentation & User Guide](capabilities/Capability_Documentation_UserGuide.md)
+
+## CI/CD
+
+The project uses GitHub Actions for continuous integration:
+
+- **Automated builds** on every PR and push to main
+- **Test execution** including unit, integration, and architecture tests
+- **Architectural validation** via ArchUnit to prevent boundary violations
+
+See `.github/workflows/ci.yml` and [Release & Deployment Guide](capabilities/Release_and_Deployment_Guide.md) for details.
+
+## Technology Stack
+
+- **Java 21** – Latest LTS version
+- **Gradle** – Build tool with multi-module support
+- **Spring Boot 3.2** – REST framework
+- **AWS SDK v2** – DynamoDB client
+- **DynamoDB** – Versioned single-table storage
+- **LocalStack** – Local AWS service emulation
+- **Testcontainers** – Integration testing
+- **ArchUnit** – Architecture enforcement
+- **JUnit 5** – Testing framework
+
+## Contributing
+
+1. Create a feature branch following the naming convention: `NN-feature-description`
+2. Implement changes with tests
+3. Ensure all tests pass: `./gradlew clean build`
+4. Update documentation as needed
+5. Open a pull request
+
+## License
+
+[Add your license here]
+
+## Support
+
+For questions or issues, please refer to the documentation in `capabilities/` or open an issue.

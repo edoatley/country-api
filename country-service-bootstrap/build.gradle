@@ -1,7 +1,16 @@
 plugins {
     id 'application'
+    id 'org.springframework.boot' version '3.2.0'
+    id 'io.spring.dependency-management' version '1.1.4'
 }
-mainClassName = 'com.example.country.bootstrap.BootstrapApp'
+
+// Spring Boot main class is CountryServiceApplication
+
 dependencies {
     implementation project(':country-service-adapters')
+    implementation project(':country-service-application')
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation platform('software.amazon.awssdk:bom:2.21.0')
+    implementation 'software.amazon.awssdk:dynamodb'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
