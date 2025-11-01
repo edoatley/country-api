@@ -21,10 +21,25 @@ Use this checklist to go from clone to running, testing, and deploying locally.
 5. **Docs:**
    - Review the `README.md` for project structure, build/run, and links to detailed design docs under `capabilities/`.
 
-## Next Steps (After Sprint Zero)
-- Set up and run LocalStack for AWS emulation (scripts and docs will be updated next Sprint)
+## Local Development (Sprint 3)
+1. **Start LocalStack:**
+   - `docker-compose up -d`
+2. **Set AWS environment variables:**
+   ```bash
+   export AWS_ENDPOINT_URL=http://localhost:4566
+   export AWS_ACCESS_KEY_ID=test
+   export AWS_SECRET_ACCESS_KEY=test
+   export AWS_REGION=us-east-1
+   ```
+3. **Run integration tests:**
+   - `./gradlew test` (will automatically spin up Testcontainers LocalStack)
+4. **Verify DynamoDB repository works:**
+   - Tests in `country-service-adapters` validate full persistence layer
+
+## Next Steps (Future Sprints)
 - Seed DynamoDB via CSV (planned script)
-- Implement business logic, REST endpoints, and integration tests as per planned capabilities
+- Wire up REST/Lambda adapters with actual HTTP framework
+- Complete authentication and error handling per OpenAPI spec
 
 ## Troubleshooting
 - Gradle or Java errors: verify JDK 21 in use (check `java -version`)

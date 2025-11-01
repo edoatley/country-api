@@ -3,30 +3,30 @@
 ## Overview
 Set up a first-class local development experience for the project, with automated testing, LocalStack/Testcontainers for AWS emulation, and CI that enforces code, contract, and architecture requirements.
 
+## Status (Sprint 3 updates)
+- LocalStack Docker Compose setup completed (Sprint 3)
+- Testcontainers integration tests for DynamoDB repository (Sprint 3)
+- ArchUnit boundary tests implemented (Sprint 1)
+- CI/CD pipeline with GitHub Actions (Sprint 0)
+- JUnit5 unit and integration tests across modules (Sprint 1-3)
+
 ## Tasks Breakdown
 
-### Sprint 1: Local AWS Emulation (LocalStack)
-- Add LocalStack Docker support for DynamoDB, Lambda, and other AWS resources
-- Document how to spin up/shut down local environment
-- Script table/lambda creation as part of local setup
-- Configure local endpoint overrides for all infra
+### Sprint 0: CI/CD Pipeline (Done)
+- GitHub Actions workflow for build/test on PRs and main (Done)
 
-### Sprint 2: Automated Testing
-- Add JUnit5-based unit and integration test structure to all modules
-- Integrate Testcontainers for ephemeral DynamoDB/lambda testing
-- Provide fixtures and sample data for test scenarios
-- Ensure adapters can run with either production AWS or local stack
+### Sprint 1: Architectural Enforcement (Done)
+- ArchUnit tests enforcing domain/application/adapters boundaries (Done)
 
-### Sprint 3: Continuous Integration Pipeline
-- Create GitHub Actions or equivalent pipeline that runs:
-  - Lint/format checks
-  - All tests (unit, integration)
-  - OpenAPI contract validation
-- Ensure that PRs fail if architectural integrity or contracts are not met
+### Sprint 3: Local AWS Emulation (Done)
+- LocalStack Docker Compose setup (Done)
+- Testcontainers for ephemeral DynamoDB testing (Done)
+- Table provisioning helper for tests (Done)
+- Local endpoint configuration documented (Done)
 
-### Sprint 4: Architectural Enforcement (ArchUnit)
-- Add ArchUnit tests to continuously check modular boundaries
-- Document common architectural violations and fixes
+### Future Sprints
+- OpenAPI contract validation in CI (Planned)
+- Lambda emulation/testing (Planned)
 
 ---
 

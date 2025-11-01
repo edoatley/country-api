@@ -3,30 +3,27 @@
 ## Overview
 Implement DynamoDB persistence for countries using a single-table, versioned schema. Ensure all operations (create, update, fetch, delete, history) are version-preserving and the repository adapter enforces contracts/constraints from the domain/application layer. All adapter code should be testable/mocked and decoupled from AWS SDK specifics where possible.
 
+## Status (Sprint 3 updates)
+- Implemented `DynamoDbCountryRepository` following ADR_0002 single-table design.
+- Added LocalStack Docker Compose setup for local development.
+- Added Testcontainers integration tests verifying versioning and all query paths.
+- Repository supports write-once versioning, logical deletes, and full history retrieval.
+
 ## Tasks Breakdown
 
-### Sprint 1: DynamoDB Table Model & Infra Setup
-- Define single-table schema with key structure:
-  - Partition key: `alpha2Code`
-  - Sort key: version timestamp or `createDate`
-- Add additional DynamoDB GSI or indexes if required for alternate key lookups (alpha3, numericCode)
-- Define attribute mapping for domain model fields
-- Add local table fixture/config for LocalStack and CI testing
+### Sprint 3: DynamoDB Table Model & Infra Setup (Done)
+- Single-table schema with PK/SK and GSIs for alpha3/numeric lookups (Done)
+- Docker Compose for LocalStack (Done)
+- Table provisioning helper for tests (Done)
 
-### Sprint 2: Repository Implementation
-- Implement DynamoDB repository (adapter) to support:
-  - Save new country (write-once)
-  - Update as new version (never overwrite)
-  - Find latest by alpha2Code, alpha3Code, numericCode
-  - List paginated countries (active, not isDeleted)
-  - Get history (sort descending by createDate)
-  - Logical delete (set isDeleted=true as new version)
-- Ensure all mappings/transformations preserve domain contracts and invariants.
+### Sprint 3: Repository Implementation (Done)
+- `DynamoDbCountryRepository` implements `CountryRepositoryPort` (Done)
+- Write-once versioning, latest queries, history, logical delete (Done)
+- Integration tests with Testcontainers (Done)
 
-### Sprint 3: Error & Edge Handling
-- Map AWS/DynamoDB exceptions to application errors.
-- Ensure transactional or idempotent operations as required (handling race on concurrent updates)
-- Unit and integration test repository thoroughly (with LocalStack or Testcontainers).
+### Future Sprints
+- Error handling and edge cases (transactional/idempotency concerns) - Planned
+- Production deployment scripts/IaC - Planned
 
 ### Sprint 4: Populate with Sample Data
 - Script initial population of table from countries_iso3166b.csv
