@@ -2,5 +2,5 @@ plugins {
     id 'java-library'
 }
 dependencies {
-    implementation project(':country-service-domain')
+    api project(':country-service-domain')
 }
