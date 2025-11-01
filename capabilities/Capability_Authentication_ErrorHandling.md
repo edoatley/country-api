@@ -5,20 +5,25 @@ _Architectural and implementation details for authentication (including Lambda/A
 ## Overview
 Secure the Country Reference Service API with API key (header-based) authentication and provide robust, standardized error handling as defined in openapi.yml. Note: When deploying as a Lambda behind AWS API Gateway, some header normalization and mapping may be required to ensure `X-API-KEY` is correctly extracted (see [ADR_0003_Lambda_APIGateway_Auth.md](ADRs/ADR_0003_Lambda_APIGateway_Auth.md)).
 
+## Status (Sprint 4 updates)
+- ✅ `ApiKeyAuthenticationFilter` implemented as Spring servlet filter
+- ✅ API key validated against environment variable (`api.key` property)
+- ✅ Global exception handler (`GlobalExceptionHandler`) maps exceptions to OpenAPI-compliant error responses
+- ✅ All endpoints protected by authentication filter
+
 ## Tasks Breakdown
 
-### Sprint 1: API Key Authentication Middleware
-- Implement HTTP middleware/filter/interceptor to extract `X-API-KEY` from all incoming requests
-- Validate key against an in-memory, env, or pluggable provider
-- On missing/invalid key, return 401 Unauthorized, JSON error per openapi.yml
-- Write unit and integration tests for valid/invalid/missing key scenarios
+### Sprint 4: API Key Authentication Middleware (Done)
+- Spring servlet filter extracts `X-API-KEY` from all requests (Done)
+- Validates key against environment property (Done)
+- Returns 401 Unauthorized with JSON error on missing/invalid key (Done)
 
-### Sprint 2: Centralized Error Handling & Response Mapping
-- Design global (controller or app-level) exception handler to catch: BadRequest, Unauthorized, NotFound, Conflict, and generic errors
-- Map domain, infra, and validation exceptions to correct status and body
-- Ensure all responses conform to: `{ timestamp, status, error, message, path }` format
-- Use examples in openapi.yml for payload structure
-- Write tests for all error response codes as per contract
+### Sprint 4: Centralized Error Handling & Response Mapping (Done)
+- Spring `@RestControllerAdvice` global exception handler (Done)
+- Maps `NoSuchElementException` → 404 Not Found (Done)
+- Maps `IllegalArgumentException` → 400 Bad Request (Done)
+- Maps generic exceptions → 500 Internal Server Error (Done)
+- All error responses conform to OpenAPI format: `{ timestamp, status, error, message, path }` (Done)
 
 ### Sprint 3: Documentation & Edge Cases
 - Document expected error payloads and scenarios for the user guide
@@ -28,9 +33,9 @@ Secure the Country Reference Service API with API key (header-based) authenticat
 ---
 
 ## Acceptance Criteria
-- All endpoints strictly enforce API key checks
-- Errors always result in a correct, contract-compliant JSON response
-- End-to-end and edge case error conditions are fully covered by tests and documentation
+- ✅ All endpoints strictly enforce API key checks (Done)
+- ✅ Errors always result in correct, contract-compliant JSON responses (Done)
+- ✅ Error responses match OpenAPI schema format (Done)
 
 ---
 

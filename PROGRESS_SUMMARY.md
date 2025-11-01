@@ -1,7 +1,7 @@
 # Country Reference Service - Progress Summary
 
 ## Overview
-This document summarizes progress across completed sprints (0-3) and current state of the Country Reference Service implementation.
+This document summarizes progress across completed sprints (0-4) and current state of the Country Reference Service implementation.
 
 ---
 
@@ -95,6 +95,38 @@ This document summarizes progress across completed sprints (0-3) and current sta
 
 ---
 
+## Sprint 4: REST Framework Integration & Authentication (`06-rest-framework-auth`)
+**Status:** ✅ Complete
+
+### Achievements
+- **Spring Boot Integration:**
+  - `CountryController` implementing all OpenAPI endpoints
+  - Full HTTP mapping: GET, POST, PUT, DELETE operations
+  - Request/response mapping via Spring MVC
+  - Application runs as Spring Boot service on port 8080
+- **Authentication:**
+  - `ApiKeyAuthenticationFilter` as Spring servlet filter
+  - All endpoints protected by `X-API-KEY` header validation
+  - Returns 401 Unauthorized with JSON error on missing/invalid keys
+  - API key configurable via `api.key` property
+- **Error Handling:**
+  - `GlobalExceptionHandler` using Spring `@RestControllerAdvice`
+  - Maps `NoSuchElementException` → 404 Not Found
+  - Maps `IllegalArgumentException` → 400 Bad Request
+  - Maps generic exceptions → 500 Internal Server Error
+  - All error responses match OpenAPI schema format
+- **Configuration:**
+  - Spring Boot application (`CountryServiceApplication`)
+  - Dependency injection wiring (repository, service, API)
+  - Application properties for API key and AWS endpoint configuration
+  - DynamoDB client configuration with LocalStack support
+- **Documentation:**
+  - README fully rewritten with comprehensive project description
+  - All capability docs updated with Sprint 4 status
+  - Clear links to all documentation resources
+
+---
+
 ## Current State Summary
 
 ### ✅ Completed Components
@@ -105,31 +137,23 @@ This document summarizes progress across completed sprints (0-3) and current sta
 | Application Ports | ✅ Complete | `country-service-application` |
 | Application Service | ✅ Complete | `CountryServiceImpl` |
 | Adapter API Facade | ✅ Complete | `CountryApi`, `CountryLambdaHandler` |
+| REST Controllers | ✅ Complete | `CountryController` (Spring Boot) |
+| Authentication Filter | ✅ Complete | `ApiKeyAuthenticationFilter` |
+| Error Handler | ✅ Complete | `GlobalExceptionHandler` |
 | DynamoDB Repository | ✅ Complete | `DynamoDbCountryRepository` |
+| Spring Boot App | ✅ Complete | `CountryServiceApplication` |
 | Architecture Tests | ✅ Complete | ArchUnit tests in all modules |
 | LocalStack Setup | ✅ Complete | `docker-compose.yml` |
 | CI/CD Pipeline | ✅ Complete | `.github/workflows/ci.yml` |
 | Integration Tests | ✅ Complete | Testcontainers with LocalStack |
 
-### 🔄 Next Steps (Sprint 4+)
+### 🔄 Next Steps (Sprint 5+)
 
-1. **REST Framework Integration:**
-   - Bind `CountryApi` to HTTP framework (Spring Boot, Quarkus, or plain servlet)
-   - Implement request/response mapping
-   - Error handling middleware
-
-2. **Authentication & Security:**
-   - API key middleware per ADR 0003
-   - Integration with AWS API Gateway for Lambda deployment
-
-3. **Error Handling:**
-   - Standardized error responses per OpenAPI spec
-   - Exception mapping to HTTP status codes
-
-4. **Data Seeding:**
+1. **Data Seeding:**
    - Script to populate DynamoDB from `countries_iso3166b.csv`
+   - Test data fixtures for development and demos
 
-5. **Lambda/API Gateway Integration:**
+2. **Lambda/API Gateway Integration:**
    - Wire `CountryLambdaHandler` to AWS Lambda runtime
    - API Gateway mapping templates
    - End-to-end testing with LocalStack
@@ -151,7 +175,8 @@ This document summarizes progress across completed sprints (0-3) and current sta
 - ✅ Product Requirements Breakdown (PRD)
 - ✅ Capability Breakdowns (all 6 capabilities documented)
 - ✅ Architecture Decision Records (3 ADRs)
-- ✅ Developer Onboarding Checklist (updated through Sprint 3)
+- ✅ Developer Onboarding Checklist (updated through Sprint 4)
+- ✅ README (completely rewritten with Sprint 4)
 - ✅ Glossary & Conventions
 - ✅ Release & Deployment Guide (GitHub Actions)
 
@@ -177,5 +202,6 @@ This document summarizes progress across completed sprints (0-3) and current sta
 2. `02-project-setup` → Merged (Sprint 0)
 3. `03-domain-architecture` → Merged (Sprint 1)
 4. `04-rest-api-scaffold` → Merged (Sprint 2)
-5. `05-persistence-dynamodb` → Current (Sprint 3, ready to merge)
+5. `05-persistence-dynamodb` → Merged (Sprint 3)
+6. `06-rest-framework-auth` → Current (Sprint 4, ready to merge)
 
