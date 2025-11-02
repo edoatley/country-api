@@ -31,7 +31,8 @@ jobs:
         run: ./gradlew clean build --no-daemon
         
       - name: Generate coverage report
-        run: ./gradlew jacocoRootReport --no-daemon || echo "Note: Root coverage report may be skipped if no execution data"
+        continue-on-error: true
+        run: ./gradlew jacocoRootReport --no-daemon
         
       - name: Publish test results
         uses: EnricoMi/publish-unit-test-result-action@v2
