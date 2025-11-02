@@ -3,17 +3,27 @@
 ## Overview
 Set up a first-class local development experience for the project, with automated testing, LocalStack/Testcontainers for AWS emulation, and CI that enforces code, contract, and architecture requirements.
 
-## Status (Sprint 3 updates)
+## Status (Sprint 5 updates)
 - LocalStack Docker Compose setup completed (Sprint 3)
 - Testcontainers integration tests for DynamoDB repository (Sprint 3)
 - ArchUnit boundary tests implemented (Sprint 1)
 - CI/CD pipeline with GitHub Actions (Sprint 0)
-- JUnit5 unit and integration tests across modules (Sprint 1-3)
+- JUnit5 unit and integration tests across modules (Sprint 1-5)
+- Code coverage with JaCoCo (Sprint 5)
+- Test result reporting in CI (Sprint 5)
+- Dependabot for dependency management (Sprint 5)
 
 ## Tasks Breakdown
 
 ### Sprint 0: CI/CD Pipeline (Done)
 - GitHub Actions workflow for build/test on PRs and main (Done)
+
+### Sprint 5: Enhanced CI/CD Pipeline (Done)
+- JaCoCo code coverage reporting (Done)
+- Test result publishing in CI (Done)
+- Code coverage publishing to Codecov (Done)
+- Dependabot configuration for dependency updates (Done)
+- Gradle dependency caching for faster builds (Done)
 
 ### Sprint 1: Architectural Enforcement (Done)
 - ArchUnit tests enforcing domain/application/adapters boundaries (Done)

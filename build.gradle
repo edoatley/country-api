@@ -1,14 +1,21 @@
 plugins {
     id 'java'
+    id 'jacoco'
 }
 
 allprojects {
     group = 'com.example.country'
     version = '0.1.0-SNAPSHOT'
+    
+    repositories {
+        mavenCentral()
+    }
 }
 
 subprojects {
     apply plugin: 'java'
+    apply plugin: 'jacoco'
+    
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
     repositories {
@@ -20,5 +27,43 @@ subprojects {
     }
     test {
         useJUnitPlatform()
+        finalizedBy jacocoTestReport
+    }
+    jacocoTestReport {
+        dependsOn test
+        reports {
+            xml.required = true
+            html.required = true
+            csv.required = false
+        }
+    }
+    jacoco {
+        toolVersion = "0.8.14"
+    }
+}
+
+// Aggregate coverage report for all subprojects
+jacoco {
+    toolVersion = "0.8.14"
+}
+
+task jacocoRootReport(type: org.gradle.testing.jacoco.tasks.JacocoReport) {
+    dependsOn = subprojects.test
+    
+    additionalSourceDirs.setFrom(files(subprojects.sourceSets.main.allSource.srcDirs))
+    sourceDirectories.setFrom(files(subprojects.sourceSets.main.allSource.srcDirs))
+    classDirectories.setFrom(files(subprojects.sourceSets.main.output))
+    
+    reports {
+        xml.required = true
+        xml.outputLocation = file("${buildDir}/reports/jacoco/jacocoRootReport/jacocoRootReport.xml")
+        html.required = true
+        html.outputLocation = file("${buildDir}/reports/jacoco/jacocoRootReport")
+        csv.required = false
+    }
+    
+    doFirst {
+        def execData = files(subprojects.jacocoTestReport.executionData)
+        executionData.setFrom(execData.findAll { it.exists() })
     }
 }

@@ -1,7 +1,7 @@
 # Country Reference Service - Progress Summary
 
 ## Overview
-This document summarizes progress across completed sprints (0-4) and current state of the Country Reference Service implementation.
+This document summarizes progress across completed sprints (0-5) and current state of the Country Reference Service implementation.
 
 ---
 
@@ -127,6 +127,49 @@ This document summarizes progress across completed sprints (0-4) and current sta
 
 ---
 
+## Sprint 5: Data Seeding (`07-data-seeding`)
+**Status:** ✅ Complete
+
+### Achievements
+- **CSV Parser:**
+  - `CsvCountryReader` reads and parses `countries_iso3166b.csv`
+  - Handles quoted fields and proper CSV parsing
+  - Pads numeric codes to 3 digits as required by ISO 3166 standard
+- **Data Seeding Service:**
+  - `CountryDataSeeder` orchestrates CSV reading and repository writes
+  - Bulk seeding with error handling per country
+  - Logs seeding progress and results
+- **Table Helper:**
+  - `DynamoDbTableHelper` for production table creation (moved from test helper)
+  - Idempotent table creation (checks if exists before creating)
+  - Waits for table to be active before proceeding
+- **Spring Boot Integration:**
+  - `DataSeedingCommandLineRunner` runs on application startup (when enabled)
+  - Configurable via `data.seeding.enabled` property
+  - Automatic table creation before seeding
+- **Spring Boot Actuator Health:**
+  - Custom `DataSeedingHealthIndicator` reports health status based on seeding completion
+  - Health endpoint (`/actuator/health`) returns DOWN while seeding is in progress
+  - Returns UP when seeding completes (if enabled) or if seeding is disabled
+  - Allows integration tests to wait for seeding completion before making API calls
+- **Jackson Serialization:**
+  - `CountryJacksonMixIn` configured to properly serialize Country class accessor methods
+  - Ensures domain module remains dependency-free while enabling JSON serialization
+- **API Key Filter:**
+  - Updated to exclude `/actuator/**` endpoints from API key authentication
+- **Testing:**
+  - Unit tests for CSV parser validation
+  - Tests verify proper parsing and numeric code padding
+  - End-to-end integration test (`CountryServiceApplicationIntegrationTest`) fully working:
+    - Uses Actuator health endpoint to wait for seeding completion
+    - Verifies data seeding by making API calls
+    - All assertions passing
+- **Documentation:**
+  - README updated with data seeding instructions
+  - Persistence capability doc updated with Sprint 5 status
+
+---
+
 ## Current State Summary
 
 ### ✅ Completed Components
@@ -142,18 +185,16 @@ This document summarizes progress across completed sprints (0-4) and current sta
 | Error Handler | ✅ Complete | `GlobalExceptionHandler` |
 | DynamoDB Repository | ✅ Complete | `DynamoDbCountryRepository` |
 | Spring Boot App | ✅ Complete | `CountryServiceApplication` |
+| Data Seeding | ✅ Complete | `CountryDataSeeder`, `CsvCountryReader` |
+| Table Helper | ✅ Complete | `DynamoDbTableHelper` |
 | Architecture Tests | ✅ Complete | ArchUnit tests in all modules |
 | LocalStack Setup | ✅ Complete | `docker-compose.yml` |
 | CI/CD Pipeline | ✅ Complete | `.github/workflows/ci.yml` |
 | Integration Tests | ✅ Complete | Testcontainers with LocalStack |
 
-### 🔄 Next Steps (Sprint 5+)
+### 🔄 Next Steps (Sprint 6+)
 
-1. **Data Seeding:**
-   - Script to populate DynamoDB from `countries_iso3166b.csv`
-   - Test data fixtures for development and demos
-
-2. **Lambda/API Gateway Integration:**
+1. **Lambda/API Gateway Integration:**
    - Wire `CountryLambdaHandler` to AWS Lambda runtime
    - API Gateway mapping templates
    - End-to-end testing with LocalStack
@@ -175,8 +216,8 @@ This document summarizes progress across completed sprints (0-4) and current sta
 - ✅ Product Requirements Breakdown (PRD)
 - ✅ Capability Breakdowns (all 6 capabilities documented)
 - ✅ Architecture Decision Records (3 ADRs)
-- ✅ Developer Onboarding Checklist (updated through Sprint 4)
-- ✅ README (completely rewritten with Sprint 4)
+- ✅ Developer Onboarding Checklist (updated through Sprint 5)
+- ✅ README (completely rewritten with Sprint 4, updated Sprint 5)
 - ✅ Glossary & Conventions
 - ✅ Release & Deployment Guide (GitHub Actions)
 
@@ -203,5 +244,6 @@ This document summarizes progress across completed sprints (0-4) and current sta
 3. `03-domain-architecture` → Merged (Sprint 1)
 4. `04-rest-api-scaffold` → Merged (Sprint 2)
 5. `05-persistence-dynamodb` → Merged (Sprint 3)
-6. `06-rest-framework-auth` → Current (Sprint 4, ready to merge)
+6. `06-rest-framework-auth` → Merged (Sprint 4)
+7. `07-data-seeding` → Current (Sprint 5, ready to merge)
 

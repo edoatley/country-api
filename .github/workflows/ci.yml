@@ -7,12 +7,59 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
+          
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
+        
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+            
       - name: Build with Gradle
         run: ./gradlew clean build --no-daemon
+        
+      - name: Generate coverage report
+        run: ./gradlew jacocoRootReport --no-daemon || echo "Note: Root coverage report may be skipped if no execution data"
+        
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: |
+            **/build/test-results/test/*.xml
+          report_individual_runs: true
+          check_name: 'Test Results'
+          
+      - name: Publish code coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: |
+            build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
+            **/build/reports/jacoco/test/jacocoTestReport.xml
+          flags: unittests
+          name: codecov
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: false
+          
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-reports
+          path: |
+            build/reports/jacoco/
+            **/build/reports/jacoco/

@@ -58,12 +58,19 @@ See [Architecture Decision Records](capabilities/ADRs/README.md) for detailed ar
    export API_KEY=default-test-key
    ```
 
-5. **Run the application:**
+5. **Seed the database** (optional, but recommended for testing):
+   ```bash
+   export DATA_SEEDING_ENABLED=true
+   ./gradlew :country-service-bootstrap:bootRun
+   ```
+   This will populate the database with countries from `countries_iso3166b.csv` on startup.
+
+6. **Run the application:**
    ```bash
    ./gradlew :country-service-bootstrap:bootRun
    ```
 
-6. **Verify it's running:**
+7. **Verify it's running:**
    ```bash
    curl -H "X-API-KEY: default-test-key" http://localhost:8080/api/v1/countries
    ```
@@ -92,6 +99,7 @@ See [openapi.yml](openapi.yml) for complete API contract and examples.
 - **Unit tests:** `./gradlew test`
 - **Integration tests:** `./gradlew test` (uses Testcontainers with LocalStack)
 - **Architecture tests:** `./gradlew test` (ArchUnit boundary enforcement)
+- **Code coverage:** `./gradlew test jacocoRootReport` (generates HTML and XML coverage reports)
 
 ### LocalStack Setup
 

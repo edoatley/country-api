@@ -24,6 +24,13 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        // Exclude actuator endpoints from API key authentication
+        String path = request.getRequestURI();
+        if (path != null && path.startsWith("/actuator/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
         String apiKey = request.getHeader(API_KEY_HEADER);
         String expectedApiKey = environment.getProperty("api.key", "default-test-key");
 

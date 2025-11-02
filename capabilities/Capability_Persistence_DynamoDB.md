@@ -25,9 +25,15 @@ Implement DynamoDB persistence for countries using a single-table, versioned sch
 - Error handling and edge cases (transactional/idempotency concerns) - Planned
 - Production deployment scripts/IaC - Planned
 
-### Sprint 4: Populate with Sample Data
-- Script initial population of table from countries_iso3166b.csv
-- Provide test harness or fixtures for guide/demo
+### Sprint 5: Populate with Sample Data (Done)
+- CSV parser (`CsvCountryReader`) to read `countries_iso3166b.csv` (Done)
+- Data seeding service (`CountryDataSeeder`) (Done)
+- Spring Boot command line runner for automatic seeding on startup (Done)
+- Table creation helper (`DynamoDbTableHelper`) for production use (Done)
+- Spring Boot Actuator health indicator (`DataSeedingHealthIndicator`) for seeding status (Done)
+- End-to-end integration test verifying data seeding and API calls (Done)
+- Jackson MixIn for Country serialization (Done)
+- Tests for CSV parsing (Done)
 
 ---
 

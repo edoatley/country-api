@@ -20,8 +20,8 @@ public class CountryController {
 
     @GetMapping
     public ResponseEntity<List<Country>> getAllCountries(
-            @RequestParam(defaultValue = "20") int limit,
-            @RequestParam(defaultValue = "0") int offset) {
+            @RequestParam(name = "limit", defaultValue = "20") int limit,
+            @RequestParam(name = "offset", defaultValue = "0") int offset) {
         return ResponseEntity.ok(countryApi.listCountries(limit, offset));
     }
 
@@ -32,39 +32,39 @@ public class CountryController {
     }
 
     @GetMapping("/code/{alpha2Code}")
-    public ResponseEntity<Country> getByAlpha2(@PathVariable String alpha2Code) {
+    public ResponseEntity<Country> getByAlpha2(@PathVariable("alpha2Code") String alpha2Code) {
         Country country = countryApi.getByAlpha2(alpha2Code);
         return ResponseEntity.ok(country);
     }
 
     @PutMapping("/code/{alpha2Code}")
     public ResponseEntity<Country> updateByAlpha2(
-            @PathVariable String alpha2Code,
+            @PathVariable("alpha2Code") String alpha2Code,
             @RequestBody CountryInput input) {
         Country updated = countryApi.updateByAlpha2(alpha2Code, input);
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/code/{alpha2Code}")
-    public ResponseEntity<Void> deleteByAlpha2(@PathVariable String alpha2Code) {
+    public ResponseEntity<Void> deleteByAlpha2(@PathVariable("alpha2Code") String alpha2Code) {
         countryApi.deleteByAlpha2(alpha2Code);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
     @GetMapping("/code/{alpha2Code}/history")
-    public ResponseEntity<List<Country>> getHistory(@PathVariable String alpha2Code) {
+    public ResponseEntity<List<Country>> getHistory(@PathVariable("alpha2Code") String alpha2Code) {
         List<Country> history = countryApi.historyByAlpha2(alpha2Code);
         return ResponseEntity.ok(history);
     }
 
     @GetMapping("/code3/{alpha3Code}")
-    public ResponseEntity<Country> getByAlpha3(@PathVariable String alpha3Code) {
+    public ResponseEntity<Country> getByAlpha3(@PathVariable("alpha3Code") String alpha3Code) {
         Country country = countryApi.getByAlpha3(alpha3Code);
         return ResponseEntity.ok(country);
     }
 
     @GetMapping("/number/{numericCode}")
-    public ResponseEntity<Country> getByNumeric(@PathVariable String numericCode) {
+    public ResponseEntity<Country> getByNumeric(@PathVariable("numericCode") String numericCode) {
         Country country = countryApi.getByNumeric(numericCode);
         return ResponseEntity.ok(country);
     }
