@@ -14,8 +14,6 @@ updates:
     labels:
       - "dependencies"
       - "gradle"
-    reviewers:
-      - "edoatley"
     assignees:
       - "edoatley"
       
@@ -33,4 +31,6 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
+    assignees:
+      - "edoatley"
 
