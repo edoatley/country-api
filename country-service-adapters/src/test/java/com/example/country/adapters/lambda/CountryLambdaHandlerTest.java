@@ -60,4 +60,86 @@ class CountryLambdaHandlerTest {
         Object list = handler.handleRequest("GET_ALL", Map.of(), Map.of("limit", "10", "offset", "0"), null);
         assertTrue(list instanceof List<?>);
     }
+
+    @Test
+    void handleGetAllWithDefaults() {
+        InMemoryRepo repo = new InMemoryRepo();
+        CountryApi api = new CountryApi(new CountryServiceImpl(repo));
+        CountryLambdaHandler handler = new CountryLambdaHandler(api);
+
+        Object list = handler.handleRequest("GET_ALL", Map.of(), Map.of(), null);
+        assertTrue(list instanceof List<?>);
+    }
+
+    @Test
+    void handleUpdateAlpha2() {
+        InMemoryRepo repo = new InMemoryRepo();
+        CountryApi api = new CountryApi(new CountryServiceImpl(repo));
+        CountryLambdaHandler handler = new CountryLambdaHandler(api);
+        handler.handleRequest("CREATE", Map.of(), Map.of(), new CountryInput("United Kingdom", "GB", "GBR", "826"));
+
+        Object updated = handler.handleRequest("UPDATE_ALPHA2", Map.of("alpha2Code", "GB"), Map.of(), 
+                new CountryInput("United Kingdom Updated", "GB", "GBR", "826"));
+        assertNotNull(updated);
+    }
+
+    @Test
+    void handleDeleteAlpha2() {
+        InMemoryRepo repo = new InMemoryRepo();
+        CountryApi api = new CountryApi(new CountryServiceImpl(repo));
+        CountryLambdaHandler handler = new CountryLambdaHandler(api);
+        handler.handleRequest("CREATE", Map.of(), Map.of(), new CountryInput("United Kingdom", "GB", "GBR", "826"));
+
+        Object result = handler.handleRequest("DELETE_ALPHA2", Map.of("alpha2Code", "GB"), Map.of(), null);
+        assertNull(result);
+    }
+
+    @Test
+    void handleGetAlpha3() {
+        InMemoryRepo repo = new InMemoryRepo();
+        CountryApi api = new CountryApi(new CountryServiceImpl(repo));
+        CountryLambdaHandler handler = new CountryLambdaHandler(api);
+        handler.handleRequest("CREATE", Map.of(), Map.of(), new CountryInput("United Kingdom", "GB", "GBR", "826"));
+
+        Object found = handler.handleRequest("GET_ALPHA3", Map.of("alpha3Code", "GBR"), Map.of(), null);
+        assertNotNull(found);
+    }
+
+    @Test
+    void handleGetNumeric() {
+        InMemoryRepo repo = new InMemoryRepo();
+        CountryApi api = new CountryApi(new CountryServiceImpl(repo));
+        CountryLambdaHandler handler = new CountryLambdaHandler(api);
+        handler.handleRequest("CREATE", Map.of(), Map.of(), new CountryInput("United Kingdom", "GB", "GBR", "826"));
+
+        Object found = handler.handleRequest("GET_NUMERIC", Map.of("numericCode", "826"), Map.of(), null);
+        assertNotNull(found);
+    }
+
+    @Test
+    void handleHistoryAlpha2() {
+        InMemoryRepo repo = new InMemoryRepo();
+        CountryApi api = new CountryApi(new CountryServiceImpl(repo));
+        CountryLambdaHandler handler = new CountryLambdaHandler(api);
+        handler.handleRequest("CREATE", Map.of(), Map.of(), new CountryInput("United Kingdom", "GB", "GBR", "826"));
+
+        Object history = handler.handleRequest("HISTORY_ALPHA2", Map.of("alpha2Code", "GB"), Map.of(), null);
+        assertTrue(history instanceof List<?>);
+    }
+
+    @Test
+    void throwsExceptionOnUnknownAction() {
+        InMemoryRepo repo = new InMemoryRepo();
+        CountryApi api = new CountryApi(new CountryServiceImpl(repo));
+        CountryLambdaHandler handler = new CountryLambdaHandler(api);
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            handler.handleRequest("UNKNOWN_ACTION", Map.of(), Map.of(), null);
+        });
+    }
+
+    @Test
+    void requiresNonNullApi() {
+        assertThrows(NullPointerException.class, () -> new CountryLambdaHandler(null));
+    }
 }

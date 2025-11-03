@@ -9,3 +9,16 @@ aws:
     url: ${AWS_ENDPOINT_URL:http://localhost:4566}
   region: ${AWS_REGION:us-east-1}
 
+data:
+  seeding:
+    enabled: ${DATA_SEEDING_ENABLED:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: when-authorized
+
