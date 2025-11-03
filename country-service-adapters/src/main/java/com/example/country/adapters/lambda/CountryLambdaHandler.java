@@ -2,9 +2,7 @@ package com.example.country.adapters.lambda;
 
 import com.example.country.adapters.api.CountryApi;
 import com.example.country.application.model.CountryInput;
-import com.example.country.domain.Country;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 

@@ -3,11 +3,15 @@
 ## Overview
 Develop and expose REST API endpoints for all core country operations according to the OpenAPI specification. This includes request/response payloads as per schema, error handling, security features, and integration with the application core via ports/adapters.
 
-## Status (Sprint 4 updates)
+## Status (Sprint 6 updates)
 - ✅ Spring Boot REST controllers mapping all OpenAPI endpoints to `CountryApi`
 - ✅ Full HTTP binding: GET, POST, PUT, DELETE operations implemented
 - ✅ Spring Boot application wiring all components (repository, service, API)
 - ✅ All endpoints exposed at `/api/v1/countries` with proper HTTP methods
+- ✅ AWS Lambda handler (`ApiGatewayLambdaHandler`) for API Gateway integration
+- ✅ Route mapping from API Gateway events to handler actions
+- ✅ API key authentication in Lambda handler
+- ✅ Response mapping to API Gateway format
 
 ## Tasks Breakdown
 
@@ -31,14 +35,21 @@ Develop and expose REST API endpoints for all core country operations according 
 ### Sprint 5: OpenAPI Docs and Examples
 - Framework-integrated OpenAPI exposure and examples (Planned)
 
-### Sprint 6: Integration Testing
-- End-to-end tests with LocalStack/APIGW mapping (Planned)
+### Sprint 6: Lambda/API Gateway Integration (Done)
+- AWS Lambda `RequestHandler` implementation (`ApiGatewayLambdaHandler`) (Done)
+- API Gateway event parsing and route mapping (`RouteMapper`) (Done)
+- API key authentication middleware (`ApiKeyValidator`) (Done)
+- Response mapping to API Gateway format (Done)
+- Lambda handler factory for dependency wiring (`LambdaHandlerFactory`) (Done)
+- Unit tests for all Lambda components (Done)
 
 ## Acceptance Criteria
 - ✅ API facade aligned to OpenAPI operations (Done)
 - ✅ REST endpoints callable via HTTP with proper authentication (Done)
 - ✅ Error handling matches OpenAPI spec (Done)
 - ✅ Application runs as Spring Boot service on port 8080 (Done)
+- ✅ Lambda handler ready for AWS deployment (Done)
+- ✅ API Gateway integration complete with route mapping and authentication (Done)
 
 ## Completion
 This capability will be complete when endpoints are callable via REST and API Gateway with auth, error handling, and contract verification. Current sprint delivers the core service and adapter scaffolding without framework lock-in.

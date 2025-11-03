@@ -1,6 +1,6 @@
 # ADR 0003: Lambda + API Gateway Integration & Authentication
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2025-10-30
 - Owners: Country Reference Service Team
 - Tags: aws, lambda, apigateway, authentication
