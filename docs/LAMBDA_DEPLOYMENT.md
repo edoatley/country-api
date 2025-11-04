@@ -132,7 +132,22 @@ If the API will be accessed from a browser, configure CORS:
 
 ### Required GitHub Secrets
 
+### Option 1: OIDC Authentication (Recommended)
+
 Configure the following secrets in your GitHub repository:
+
+| Secret | Description | Example |
+|--------|-------------|---------|
+| `AWS_ROLE_ARN_STAGING` | IAM role ARN for staging deployment | `arn:aws:iam::123456789012:role/GitHubActions-Deploy-Staging` |
+| `AWS_ROLE_ARN_PRODUCTION` | IAM role ARN for production deployment | `arn:aws:iam::123456789012:role/GitHubActions-Deploy-Production` |
+| `API_KEY` | API key for staging environment | `staging-api-key` |
+| `API_KEY_PROD` | API key for production environment | `prod-api-key` |
+
+**See [AWS OIDC Setup Guide](AWS_OIDC_SETUP.md) for detailed instructions on setting up OIDC authentication.**
+
+### Option 2: Access Keys (Legacy - Not Recommended)
+
+If not using OIDC, configure these instead:
 
 | Secret | Description | Example |
 |--------|-------------|---------|
@@ -140,8 +155,8 @@ Configure the following secrets in your GitHub repository:
 | `AWS_SECRET_ACCESS_KEY` | AWS secret access key | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
 | `API_KEY` | API key for staging environment | `staging-api-key` |
 | `API_KEY_PROD` | API key for production environment | `prod-api-key` |
-| `API_GATEWAY_URL` | API Gateway URL for staging | `https://abc123.execute-api.us-east-1.amazonaws.com` |
-| `API_GATEWAY_URL_PROD` | API Gateway URL for production | `https://xyz789.execute-api.us-east-1.amazonaws.com` |
+
+**Note**: OIDC is recommended for better security. See [AWS OIDC Setup Guide](AWS_OIDC_SETUP.md).
 
 ### Deployment Process
 
