@@ -13,8 +13,8 @@ dependencies {
     implementation project(':country-service-application')
     implementation platform('software.amazon.awssdk:bom:2.21.0')
     implementation 'software.amazon.awssdk:dynamodb'
-    implementation 'org.springframework:spring-web:6.1.1'
-    implementation 'org.springframework:spring-context:6.1.1'
+    implementation 'org.springframework:spring-web:6.2.12'
+    implementation 'org.springframework:spring-context:6.2.12'
     implementation 'jakarta.servlet:jakarta.servlet-api:6.0.0'
     // AWS Lambda dependencies
     implementation 'com.amazonaws:aws-lambda-java-core:1.2.3'
