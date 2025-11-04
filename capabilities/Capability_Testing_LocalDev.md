@@ -18,12 +18,16 @@ Set up a first-class local development experience for the project, with automate
 ### Sprint 0: CI/CD Pipeline (Done)
 - GitHub Actions workflow for build/test on PRs and main (Done)
 
-### Sprint 5: Enhanced CI/CD Pipeline (Done)
+### Sprint 5: Enhanced CI/CD Pipeline & Test Quality (Done)
 - JaCoCo code coverage reporting (Done)
 - Test result publishing in CI (Done)
 - Code coverage publishing to Codecov (Done)
 - Dependabot configuration for dependency updates (Done)
 - Gradle dependency caching for faster builds (Done)
+- Code coverage improvements: Expanded test coverage to >80% in adapters and bootstrap modules (Done)
+- Test data isolation: Unique identifiers per test with automatic cleanup (Done)
+- Awaitility-based async testing replaces Thread.sleep() for reliability (Done)
+- Write verification before querying/scanning for data consistency (Done)
 
 ### Sprint 1: Architectural Enforcement (Done)
 - ArchUnit tests enforcing domain/application/adapters boundaries (Done)

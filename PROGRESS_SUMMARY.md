@@ -1,7 +1,7 @@
 # Country Reference Service - Progress Summary
 
 ## Overview
-This document summarizes progress across completed sprints (0-5) and current state of the Country Reference Service implementation.
+This document summarizes progress across completed sprints (0-6) and current state of the Country Reference Service implementation.
 
 ---
 
@@ -164,9 +164,74 @@ This document summarizes progress across completed sprints (0-5) and current sta
     - Uses Actuator health endpoint to wait for seeding completion
     - Verifies data seeding by making API calls
     - All assertions passing
+- **Code Coverage Improvements:**
+  - Expanded test coverage for adapters module (now >80%):
+    - `ApiKeyAuthenticationFilterTest` - Complete filter logic coverage
+    - `GlobalExceptionHandlerTest` - All exception handlers tested
+    - `CountryControllerTest` - All REST endpoints covered
+    - `CountryDataSeederTest` - Seeding logic and error handling
+    - `DynamoDbTableHelperTest` - Table creation and idempotency
+    - `DynamoDbCountryRepositoryTest` - Expanded with edge cases (expiry, deletion, pagination)
+    - `CsvCountryReaderTest` - Quoted fields, invalid formats, numeric padding
+    - `CountryLambdaHandlerTest` - All Lambda actions covered
+    - `CountryApiTest` - All API methods covered
+  - Expanded test coverage for bootstrap module:
+    - `DataSeedingHealthIndicatorTest` - Health indicator states
+    - `CountryServiceConfigurationTest` - Bean configuration and Jackson serialization
+- **Test Data Isolation:**
+  - Implemented unique test identifiers per test instance to prevent conflicts
+  - Automatic cleanup via `@AfterEach` to remove test data after each test
+  - Awaitility-based waiting replaces `Thread.sleep()` for more robust async testing
+  - Write verification before querying/scanning ensures data consistency
+  - All 70 tests passing consistently (individually and in full suite)
+- **CI/CD Enhancements:**
+  - JaCoCo code coverage reporting (HTML and XML)
+  - Test result publishing to GitHub Actions
+  - Codecov integration for coverage tracking
+  - Dependabot configuration for automated dependency updates
+  - Gradle dependency caching for faster CI builds
 - **Documentation:**
   - README updated with data seeding instructions
   - Persistence capability doc updated with Sprint 5 status
+  - Testing capability doc updated with coverage improvements
+
+---
+
+## Sprint 6: Lambda/API Gateway Integration (`08-lambda-api-gateway-integration`)
+**Status:** ✅ Complete
+
+### Achievements
+- **AWS Lambda Handler:**
+  - `ApiGatewayLambdaHandler` implementing `RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent>`
+  - Parses API Gateway events and delegates to `CountryLambdaHandler`
+  - Maps HTTP methods and paths to handler actions via `RouteMapper`
+  - Handles all OpenAPI routes (GET, POST, PUT, DELETE)
+- **API Gateway Event Parsing:**
+  - `RouteMapper` maps HTTP method + path to handler actions
+  - Extracts path parameters from route patterns (alpha2Code, alpha3Code, numericCode)
+  - Supports all OpenAPI endpoints: list, create, get by code, update, delete, history
+- **API Key Authentication:**
+  - `ApiKeyValidator` extracts and validates `X-API-KEY` from API Gateway event headers
+  - Case-insensitive header matching (API Gateway may normalize headers)
+  - Supports both `headers` and `multiValueHeaders` for API Gateway v1/v2 compatibility
+  - Returns 401 Unauthorized with proper error response format
+- **Response Mapping:**
+  - Maps `CountryApi` responses to API Gateway response format
+  - Proper HTTP status codes: 200 (success), 201 (created), 204 (no content), 400, 401, 404, 500
+  - JSON serialization using Jackson with JSR310 time module support
+  - Error responses match OpenAPI schema format
+- **Lambda Handler Factory:**
+  - `LambdaHandlerFactory` for wiring dependencies for Lambda deployment
+  - Supports API key from environment variable (`API_KEY`) or system property
+  - Falls back to default key for local testing
+- **Testing:**
+  - Unit tests for `ApiGatewayLambdaHandler` covering all routes and error cases
+  - Unit tests for `ApiKeyValidator` covering validation scenarios
+  - Unit tests for `RouteMapper` covering all route patterns
+  - All 100 tests passing (unit + integration)
+- **Documentation:**
+  - Lambda deployment documentation added
+  - ADR 0003 (Lambda/API Gateway Auth) - Status updated to Accepted
 
 ---
 
@@ -187,17 +252,19 @@ This document summarizes progress across completed sprints (0-5) and current sta
 | Spring Boot App | ✅ Complete | `CountryServiceApplication` |
 | Data Seeding | ✅ Complete | `CountryDataSeeder`, `CsvCountryReader` |
 | Table Helper | ✅ Complete | `DynamoDbTableHelper` |
+| Lambda Handler | ✅ Complete | `ApiGatewayLambdaHandler` |
+| API Gateway Integration | ✅ Complete | Route mapping, event parsing, response mapping |
 | Architecture Tests | ✅ Complete | ArchUnit tests in all modules |
 | LocalStack Setup | ✅ Complete | `docker-compose.yml` |
 | CI/CD Pipeline | ✅ Complete | `.github/workflows/ci.yml` |
 | Integration Tests | ✅ Complete | Testcontainers with LocalStack |
 
-### 🔄 Next Steps (Sprint 6+)
+### 🔄 Next Steps (Sprint 7+)
 
-1. **Lambda/API Gateway Integration:**
-   - Wire `CountryLambdaHandler` to AWS Lambda runtime
-   - API Gateway mapping templates
-   - End-to-end testing with LocalStack
+1. **OpenAPI Documentation:**
+   - Framework-integrated OpenAPI/Swagger UI exposure
+   - API documentation with examples
+   - Contract validation in CI
 
 ---
 
@@ -228,10 +295,16 @@ This document summarizes progress across completed sprints (0-5) and current sta
 ## Build & Test Status
 
 - ✅ All modules compile successfully
-- ✅ All unit tests pass
-- ✅ Integration tests pass (when Docker available)
+- ✅ All 100 tests pass (unit + integration)
+- ✅ Code coverage: >80% in adapters and bootstrap modules
+- ✅ Test data isolation prevents conflicts between tests
+- ✅ Integration tests pass with LocalStack (Docker available)
 - ✅ ArchUnit boundary tests pass
-- ✅ CI/CD pipeline green on PRs and main
+- ✅ Lambda/API Gateway integration complete with full test coverage
+- ✅ CI/CD pipeline green on PRs and main:
+  - Build, test, and coverage reporting
+  - Dependabot monitoring dependencies
+  - Test results published to GitHub Actions
 
 **Project is in a stable, buildable state ready for next sprint implementation.**
 
@@ -245,5 +318,6 @@ This document summarizes progress across completed sprints (0-5) and current sta
 4. `04-rest-api-scaffold` → Merged (Sprint 2)
 5. `05-persistence-dynamodb` → Merged (Sprint 3)
 6. `06-rest-framework-auth` → Merged (Sprint 4)
-7. `07-data-seeding` → Current (Sprint 5, ready to merge)
+7. `07-data-seeding` → Merged (Sprint 5)
+8. `08-lambda-api-gateway-integration` → Current (Sprint 6, ready to merge)
 
