@@ -81,7 +81,7 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
     environment:
       name: staging
-      url: https://${{ secrets.API_GATEWAY_URL }}/api/v1
+      # URL can be configured in GitHub Environment settings if needed
     
     steps:
       - uses: actions/checkout@v5
@@ -140,9 +140,8 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
     environment:
       name: production
-      url: https://${{ secrets.API_GATEWAY_URL_PROD }}/api/v1
-      # Require manual approval for production
-      # This is configured in GitHub repository settings under Environments
+      # URL can be configured in GitHub Environment settings if needed
+      # Require manual approval for production - configured in GitHub repository settings under Environments
     
     steps:
       - uses: actions/checkout@v5
