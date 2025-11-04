@@ -254,17 +254,25 @@ This document summarizes progress across completed sprints (0-6) and current sta
 | Table Helper | ✅ Complete | `DynamoDbTableHelper` |
 | Lambda Handler | ✅ Complete | `ApiGatewayLambdaHandler` |
 | API Gateway Integration | ✅ Complete | Route mapping, event parsing, response mapping |
+| Lambda Entry Point | ✅ Complete | `LambdaEntryPoint` for AWS deployment |
+| Lambda Build Task | ✅ Complete | `buildLambdaPackage` Gradle task |
+| Deployment Workflow | ✅ Complete | `.github/workflows/deploy.yml` |
 | Architecture Tests | ✅ Complete | ArchUnit tests in all modules |
 | LocalStack Setup | ✅ Complete | `docker-compose.yml` |
 | CI/CD Pipeline | ✅ Complete | `.github/workflows/ci.yml` |
 | Integration Tests | ✅ Complete | Testcontainers with LocalStack |
 
-### 🔄 Next Steps (Sprint 7+)
+### 🔄 Next Steps (Sprint 8+)
 
 1. **OpenAPI Documentation:**
    - Framework-integrated OpenAPI/Swagger UI exposure
    - API documentation with examples
    - Contract validation in CI
+
+2. **Smoke Tests:**
+   - Automated smoke tests in deployment workflow
+   - Test API endpoints after deployment
+   - Validate Lambda function health
 
 ---
 
@@ -319,5 +327,6 @@ This document summarizes progress across completed sprints (0-6) and current sta
 5. `05-persistence-dynamodb` → Merged (Sprint 3)
 6. `06-rest-framework-auth` → Merged (Sprint 4)
 7. `07-data-seeding` → Merged (Sprint 5)
-8. `08-lambda-api-gateway-integration` → Current (Sprint 6, ready to merge)
+8. `08-lambda-api-gateway-integration` → Merged (Sprint 6)
+9. `09-deployment-workflow` → Current (Sprint 7, ready to merge)
 

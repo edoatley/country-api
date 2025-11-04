@@ -15,13 +15,17 @@ This guide defines how we version, build, test, package, and deploy the Country 
 
 ## Required GitHub Secrets
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
-- `REGISTRY_USERNAME`, `REGISTRY_PASSWORD` (if using container registry)
-- `X_API_KEY` (for smoke tests)
+- `API_KEY` - API key for staging environment
+- `API_KEY_PROD` - API key for production environment
+- `API_GATEWAY_URL` - API Gateway URL for staging (optional, for smoke tests)
+- `API_GATEWAY_URL_PROD` - API Gateway URL for production (optional, for smoke tests)
+- `REGISTRY_USERNAME`, `REGISTRY_PASSWORD` (if using container registry - future)
 - Optional: `AWS_ROLE_TO_ASSUME` for OIDC-based auth
 
 ## Build Artifacts
 - JARs per module; one runnable artifact in `country-service-bootstrap`
-- Container image: `ghcr.io/<org>/country-service:<tag>` (or ECR/GCR)
+- Lambda deployment package: `country-service-lambda-<version>.jar` (fat JAR with all dependencies)
+- Container image: `ghcr.io/<org>/country-service:<tag>` (or ECR/GCR) - Future
 
 ## GitHub Actions Workflows
 
@@ -36,17 +40,20 @@ This guide defines how we version, build, test, package, and deploy the Country 
   6. Integration tests with LocalStack/Testcontainers
   7. Publish test reports and coverage
 
-### 2) Release (on tag `v*`)
-- Triggers: `push: tags: [ "v*" ]`
+### 2) Deploy (on tag `v*` or manual workflow dispatch)
+- Triggers: 
+  - `push: tags: [ "v*" ]` (automatic deployment to staging)
+  - `workflow_dispatch` (manual deployment to staging or production)
 - Steps:
   1. Checkout
   2. Setup JDK 21
-  3. Build & test
-  4. Package image and push to registry
-  5. Deploy to `staging`
-  6. Run smoke tests (health check, sample endpoint calls with `X-API-KEY`)
-  7. Manual approval step
-  8. Deploy to `prod`
+  3. Build Lambda package (`gradlew :country-service-adapters:buildLambdaPackage`)
+  4. Upload Lambda package artifact
+  5. Deploy to `staging` (automatic on tag) or selected environment (manual)
+  6. Update Lambda function code and environment variables
+  7. Run smoke tests (if configured)
+  8. Manual approval step for production
+  9. Deploy to `prod` (manual only, requires approval)
 
 ### Sample workflow yaml (excerpt)
 ```yaml

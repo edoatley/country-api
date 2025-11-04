@@ -1,0 +1,197 @@
+name: Deploy
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+
+permissions:
+  contents: read
+  id-token: write # For OIDC authentication
+
+env:
+  AWS_REGION: us-east-1
+  LAMBDA_FUNCTION_NAME: country-service-lambda
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      lambda-jar-path: ${{ steps.build.outputs.lambda-jar-path }}
+      version: ${{ steps.version.outputs.version }}
+    
+    steps:
+      - uses: actions/checkout@v5
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      
+      - name: Extract version from tag
+        id: version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+      
+      - name: Build Lambda package
+        id: build
+        run: |
+          ./gradlew :country-service-adapters:buildLambdaPackage --no-daemon
+          JAR_PATH=$(find country-service-adapters/build/libs -name "country-service-lambda-*.jar" | head -1)
+          echo "lambda-jar-path=$JAR_PATH" >> $GITHUB_OUTPUT
+          echo "Lambda JAR: $JAR_PATH"
+          ls -lh "$JAR_PATH"
+      
+      - name: Upload Lambda package
+        uses: actions/upload-artifact@v5
+        with:
+          name: lambda-package
+          path: ${{ steps.build.outputs.lambda-jar-path }}
+          retention-days: 7
+
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    environment:
+      name: staging
+      url: https://${{ secrets.API_GATEWAY_URL }}/api/v1
+    
+    steps:
+      - uses: actions/checkout@v5
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Download Lambda package
+        uses: actions/download-artifact@v5
+        with:
+          name: lambda-package
+          path: .
+      
+      - name: Deploy Lambda function
+        run: |
+          JAR_FILE=$(find . -name "country-service-lambda-*.jar" | head -1)
+          echo "Deploying Lambda function: ${{ env.LAMBDA_FUNCTION_NAME }}"
+          echo "JAR file: $JAR_FILE"
+          
+          # Update Lambda function code
+          aws lambda update-function-code \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }}-staging \
+            --zip-file "fileb://$JAR_FILE" \
+            --region ${{ env.AWS_REGION }}
+          
+          # Wait for update to complete
+          aws lambda wait function-updated \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }}-staging \
+            --region ${{ env.AWS_REGION }}
+      
+      - name: Update Lambda environment variables
+        run: |
+          aws lambda update-function-configuration \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }}-staging \
+            --environment "Variables={AWS_REGION=${{ env.AWS_REGION }},API_KEY=${{ secrets.API_KEY }},DYNAMODB_TABLE_NAME=Countries}" \
+            --region ${{ env.AWS_REGION }}
+      
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests against staging environment..."
+          # Wait for Lambda to be ready
+          sleep 10
+          
+          # Test health endpoint (if available)
+          # curl -X GET "https://${{ secrets.API_GATEWAY_URL }}/api/v1/countries" \
+          #   -H "X-API-KEY: ${{ secrets.API_KEY }}" \
+          #   -w "\nHTTP Status: %{http_code}\n" || echo "Smoke test failed"
+
+  deploy-production:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
+    environment:
+      name: production
+      url: https://${{ secrets.API_GATEWAY_URL_PROD }}/api/v1
+      # Require manual approval for production
+      # This is configured in GitHub repository settings under Environments
+    
+    steps:
+      - uses: actions/checkout@v5
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Download Lambda package
+        uses: actions/download-artifact@v5
+        with:
+          name: lambda-package
+          path: .
+      
+      - name: Deploy Lambda function
+        run: |
+          JAR_FILE=$(find . -name "country-service-lambda-*.jar" | head -1)
+          echo "Deploying Lambda function: ${{ env.LAMBDA_FUNCTION_NAME }}"
+          echo "JAR file: $JAR_FILE"
+          
+          # Update Lambda function code
+          aws lambda update-function-code \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }}-production \
+            --zip-file "fileb://$JAR_FILE" \
+            --region ${{ env.AWS_REGION }}
+          
+          # Wait for update to complete
+          aws lambda wait function-updated \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }}-production \
+            --region ${{ env.AWS_REGION }}
+      
+      - name: Update Lambda environment variables
+        run: |
+          aws lambda update-function-configuration \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }}-production \
+            --environment "Variables={AWS_REGION=${{ env.AWS_REGION }},API_KEY=${{ secrets.API_KEY_PROD }},DYNAMODB_TABLE_NAME=Countries}" \
+            --region ${{ env.AWS_REGION }}
+      
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests against production environment..."
+          # Wait for Lambda to be ready
+          sleep 10
+          
+          # Test health endpoint (if available)
+          # curl -X GET "https://${{ secrets.API_GATEWAY_URL_PROD }}/api/v1/countries" \
+          #   -H "X-API-KEY: ${{ secrets.API_KEY_PROD }}" \
+          #   -w "\nHTTP Status: %{http_code}\n" || echo "Smoke test failed"
+

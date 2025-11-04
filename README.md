@@ -151,13 +151,49 @@ Comprehensive documentation is organized in the `capabilities/` directory:
 
 ## CI/CD
 
-The project uses GitHub Actions for continuous integration:
+The project uses GitHub Actions for continuous integration and deployment:
 
 - **Automated builds** on every PR and push to main
 - **Test execution** including unit, integration, and architecture tests
 - **Architectural validation** via ArchUnit to prevent boundary violations
+- **Lambda deployment** on release tags (automatic to staging, manual to production)
 
-See `.github/workflows/ci.yml` and [Release & Deployment Guide](capabilities/Release_and_Deployment_Guide.md) for details.
+See `.github/workflows/ci.yml`, `.github/workflows/deploy.yml`, and [Release & Deployment Guide](capabilities/Release_and_Deployment_Guide.md) for details.
+
+## Deployment
+
+The service can be deployed as an AWS Lambda function behind API Gateway.
+
+### Build Lambda Package
+
+```bash
+./gradlew :country-service-adapters:buildLambdaPackage
+```
+
+This creates a deployment package at:
+```
+country-service-adapters/build/libs/country-service-lambda-<version>.jar
+```
+
+### Deploy via GitHub Actions
+
+1. **Automatic deployment to staging** (on release tag):
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+
+2. **Manual deployment** (staging or production):
+   - Go to Actions → Deploy workflow
+   - Click "Run workflow"
+   - Select environment (staging or production)
+   - Production requires manual approval
+
+See [Lambda Deployment Guide](docs/LAMBDA_DEPLOYMENT.md) for detailed deployment instructions, including:
+- Lambda configuration (handler, runtime, environment variables)
+- IAM permissions required
+- API Gateway setup
+- Troubleshooting guide
 
 ## Technology Stack
 
