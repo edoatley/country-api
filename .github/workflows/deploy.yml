@@ -123,14 +123,25 @@ jobs:
             --environment "Variables={AWS_REGION=${{ env.AWS_REGION }},API_KEY=${{ secrets.API_KEY }},DYNAMODB_TABLE_NAME=Countries}" \
             --region ${{ env.AWS_REGION }}
       
+      - name: Check if smoke tests should run
+        id: check_smoke_tests
+        env:
+          API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL_STAGING }}
+        run: |
+          if [ -n "$API_GATEWAY_URL" ] && [ "$API_GATEWAY_URL" != "" ]; then
+            echo "run_smoke_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "run_smoke_tests=false" >> $GITHUB_OUTPUT
+          fi
+          
       - name: Install jq (for JSON validation)
-        if: secrets.API_GATEWAY_URL_STAGING != ''
+        if: steps.check_smoke_tests.outputs.run_smoke_tests == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y jq
           
       - name: Run smoke tests
-        if: secrets.API_GATEWAY_URL_STAGING != ''
+        if: steps.check_smoke_tests.outputs.run_smoke_tests == 'true'
         env:
           API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL_STAGING }}
           API_KEY: ${{ secrets.API_KEY }}
@@ -188,7 +199,7 @@ jobs:
           echo "✅ All smoke tests passed successfully!"
           
       - name: Smoke tests skipped
-        if: secrets.API_GATEWAY_URL_STAGING == ''
+        if: steps.check_smoke_tests.outputs.run_smoke_tests == 'false'
         run: |
           echo "⚠️  Smoke tests skipped: API_GATEWAY_URL_STAGING secret not configured"
           echo "To enable smoke tests, add API_GATEWAY_URL_STAGING secret to your GitHub repository"
@@ -243,14 +254,25 @@ jobs:
             --environment "Variables={AWS_REGION=${{ env.AWS_REGION }},API_KEY=${{ secrets.API_KEY_PROD }},DYNAMODB_TABLE_NAME=Countries}" \
             --region ${{ env.AWS_REGION }}
       
+      - name: Check if smoke tests should run
+        id: check_smoke_tests
+        env:
+          API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL_PRODUCTION }}
+        run: |
+          if [ -n "$API_GATEWAY_URL" ] && [ "$API_GATEWAY_URL" != "" ]; then
+            echo "run_smoke_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "run_smoke_tests=false" >> $GITHUB_OUTPUT
+          fi
+          
       - name: Install jq (for JSON validation)
-        if: secrets.API_GATEWAY_URL_PRODUCTION != ''
+        if: steps.check_smoke_tests.outputs.run_smoke_tests == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y jq
           
       - name: Run smoke tests
-        if: secrets.API_GATEWAY_URL_PRODUCTION != ''
+        if: steps.check_smoke_tests.outputs.run_smoke_tests == 'true'
         env:
           API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL_PRODUCTION }}
           API_KEY: ${{ secrets.API_KEY_PROD }}
@@ -308,7 +330,7 @@ jobs:
           echo "✅ All smoke tests passed successfully!"
           
       - name: Smoke tests skipped
-        if: secrets.API_GATEWAY_URL_PRODUCTION == ''
+        if: steps.check_smoke_tests.outputs.run_smoke_tests == 'false'
         run: |
           echo "⚠️  Smoke tests skipped: API_GATEWAY_URL_PRODUCTION secret not configured"
           echo "To enable smoke tests, add API_GATEWAY_URL_PRODUCTION secret to your GitHub repository"
