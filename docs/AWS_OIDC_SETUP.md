@@ -131,6 +131,7 @@ The role needs permissions to:
     {
       "Effect": "Allow",
       "Action": [
+        "lambda:CreateFunction",
         "lambda:UpdateFunctionCode",
         "lambda:UpdateFunctionConfiguration",
         "lambda:GetFunction",
@@ -204,6 +205,8 @@ Instead of `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, configure these secr
 |-------------|-------|-------------|
 | `AWS_ROLE_ARN_STAGING` | `arn:aws:iam::ACCOUNT_ID:role/GitHubActions-Deploy-Staging` | IAM role ARN for staging |
 | `AWS_ROLE_ARN_PRODUCTION` | `arn:aws:iam::ACCOUNT_ID:role/GitHubActions-Deploy-Production` | IAM role ARN for production |
+| `LAMBDA_EXECUTION_ROLE_ARN_STAGING` | `arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-staging` | IAM role ARN for Lambda execution (staging) |
+| `LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION` | `arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-production` | IAM role ARN for Lambda execution (production) |
 | `API_KEY` | Your staging API key | API key for staging environment |
 | `API_KEY_PROD` | Your production API key | API key for production environment |
 | `API_GATEWAY_URL_STAGING` | `https://abc123.execute-api.us-east-1.amazonaws.com` | API Gateway URL for staging (optional, for smoke tests) |

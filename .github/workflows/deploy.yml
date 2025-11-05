@@ -102,19 +102,43 @@ jobs:
       - name: Deploy Lambda function
         run: |
           JAR_FILE=$(find . -name "country-service-lambda-*.jar" | head -1)
-          echo "Deploying Lambda function: ${{ env.LAMBDA_FUNCTION_NAME }}"
+          FUNCTION_NAME="${{ env.LAMBDA_FUNCTION_NAME }}-staging"
+          echo "Deploying Lambda function: $FUNCTION_NAME"
           echo "JAR file: $JAR_FILE"
           
-          # Update Lambda function code
-          aws lambda update-function-code \
-            --function-name ${{ env.LAMBDA_FUNCTION_NAME }}-staging \
-            --zip-file "fileb://$JAR_FILE" \
-            --region ${{ env.AWS_REGION }}
-          
-          # Wait for update to complete
-          aws lambda wait function-updated \
-            --function-name ${{ env.LAMBDA_FUNCTION_NAME }}-staging \
-            --region ${{ env.AWS_REGION }}
+          # Check if function exists
+          if aws lambda get-function --function-name "$FUNCTION_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+            echo "Function exists, updating code..."
+            # Update Lambda function code
+            aws lambda update-function-code \
+              --function-name "$FUNCTION_NAME" \
+              --zip-file "fileb://$JAR_FILE" \
+              --region ${{ env.AWS_REGION }}
+            
+            # Wait for update to complete
+            aws lambda wait function-updated \
+              --function-name "$FUNCTION_NAME" \
+              --region ${{ env.AWS_REGION }}
+          else
+            echo "Function does not exist, creating it..."
+            # Create Lambda function
+            # Note: LAMBDA_EXECUTION_ROLE_ARN_STAGING secret must be configured
+            aws lambda create-function \
+              --function-name "$FUNCTION_NAME" \
+              --runtime java21 \
+              --role "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_STAGING }}" \
+              --handler com.example.country.adapters.lambda.LambdaEntryPoint::handleRequest \
+              --zip-file "fileb://$JAR_FILE" \
+              --timeout 30 \
+              --memory-size 512 \
+              --architectures x86_64 \
+              --region ${{ env.AWS_REGION }}
+            
+            # Wait for function to be active
+            aws lambda wait function-active \
+              --function-name "$FUNCTION_NAME" \
+              --region ${{ env.AWS_REGION }}
+          fi
       
       - name: Update Lambda environment variables
         run: |
@@ -233,19 +257,43 @@ jobs:
       - name: Deploy Lambda function
         run: |
           JAR_FILE=$(find . -name "country-service-lambda-*.jar" | head -1)
-          echo "Deploying Lambda function: ${{ env.LAMBDA_FUNCTION_NAME }}"
+          FUNCTION_NAME="${{ env.LAMBDA_FUNCTION_NAME }}-production"
+          echo "Deploying Lambda function: $FUNCTION_NAME"
           echo "JAR file: $JAR_FILE"
           
-          # Update Lambda function code
-          aws lambda update-function-code \
-            --function-name ${{ env.LAMBDA_FUNCTION_NAME }}-production \
-            --zip-file "fileb://$JAR_FILE" \
-            --region ${{ env.AWS_REGION }}
-          
-          # Wait for update to complete
-          aws lambda wait function-updated \
-            --function-name ${{ env.LAMBDA_FUNCTION_NAME }}-production \
-            --region ${{ env.AWS_REGION }}
+          # Check if function exists
+          if aws lambda get-function --function-name "$FUNCTION_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+            echo "Function exists, updating code..."
+            # Update Lambda function code
+            aws lambda update-function-code \
+              --function-name "$FUNCTION_NAME" \
+              --zip-file "fileb://$JAR_FILE" \
+              --region ${{ env.AWS_REGION }}
+            
+            # Wait for update to complete
+            aws lambda wait function-updated \
+              --function-name "$FUNCTION_NAME" \
+              --region ${{ env.AWS_REGION }}
+          else
+            echo "Function does not exist, creating it..."
+            # Create Lambda function
+            # Note: LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION secret must be configured
+            aws lambda create-function \
+              --function-name "$FUNCTION_NAME" \
+              --runtime java21 \
+              --role "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION }}" \
+              --handler com.example.country.adapters.lambda.LambdaEntryPoint::handleRequest \
+              --zip-file "fileb://$JAR_FILE" \
+              --timeout 30 \
+              --memory-size 512 \
+              --architectures x86_64 \
+              --region ${{ env.AWS_REGION }}
+            
+            # Wait for function to be active
+            aws lambda wait function-active \
+              --function-name "$FUNCTION_NAME" \
+              --region ${{ env.AWS_REGION }}
+          fi
       
       - name: Update Lambda environment variables
         run: |
