@@ -120,9 +120,9 @@ Replace `ACCOUNT_ID`, `YOUR_GITHUB_ORG`, and `YOUR_REPO` with your values:
 3. **Attach Permissions Policy**:
 
 The role needs permissions to:
-- Update Lambda function code
-- Update Lambda function configuration
-- (Optional) Create Lambda functions if they don't exist
+- Create/update Lambda functions
+- Create/update Lambda execution roles
+- Get AWS account ID
 
 ```json
 {
@@ -149,11 +149,20 @@ The role needs permissions to:
     {
       "Effect": "Allow",
       "Action": [
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:PutLogEvents"
+        "iam:CreateRole",
+        "iam:GetRole",
+        "iam:PutRolePolicy",
+        "iam:GetRolePolicy",
+        "iam:ListRolePolicies"
       ],
-      "Resource": "arn:aws:logs:*:ACCOUNT_ID:*"
+      "Resource": "arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-staging"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sts:GetCallerIdentity"
+      ],
+      "Resource": "*"
     }
   ]
 }
@@ -205,8 +214,8 @@ Instead of `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, configure these secr
 |-------------|-------|-------------|
 | `AWS_ROLE_ARN_STAGING` | `arn:aws:iam::ACCOUNT_ID:role/GitHubActions-Deploy-Staging` | IAM role ARN for staging |
 | `AWS_ROLE_ARN_PRODUCTION` | `arn:aws:iam::ACCOUNT_ID:role/GitHubActions-Deploy-Production` | IAM role ARN for production |
-| `LAMBDA_EXECUTION_ROLE_ARN_STAGING` | `arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-staging` | IAM role ARN for Lambda execution (staging) |
-| `LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION` | `arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-production` | IAM role ARN for Lambda execution (production) |
+| `LAMBDA_EXECUTION_ROLE_ARN_STAGING` | `arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-staging` | IAM role ARN for Lambda execution (staging, optional - will be created automatically if not provided) |
+| `LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION` | `arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-production` | IAM role ARN for Lambda execution (production, optional - will be created automatically if not provided) |
 | `API_KEY` | Your staging API key | API key for staging environment |
 | `API_KEY_PROD` | Your production API key | API key for production environment |
 | `API_GATEWAY_URL_STAGING` | `https://abc123.execute-api.us-east-1.amazonaws.com` | API Gateway URL for staging (optional, for smoke tests) |
@@ -215,6 +224,8 @@ Instead of `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, configure these secr
 **Note**: 
 - You no longer need `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` secrets.
 - For instructions on generating API keys, see [API Key Setup Guide](API_KEY_SETUP.md).
+- `LAMBDA_EXECUTION_ROLE_ARN_*` secrets are optional - the workflow will automatically create the roles if they don't exist.
+- For manual role setup instructions, see [Lambda Execution Role Setup Guide](LAMBDA_EXECUTION_ROLE_SETUP.md).
 - `API_GATEWAY_URL_*` secrets are optional but recommended for automated smoke tests after deployment.
 
 ## Step 4: Verify Workflow Configuration

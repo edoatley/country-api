@@ -1,12 +1,28 @@
 # Lambda Execution Role Setup
 
-This guide explains how to create the IAM execution role that your Lambda function uses to access AWS services like DynamoDB and CloudWatch Logs.
+This guide explains how the IAM execution role that your Lambda function uses to access AWS services like DynamoDB and CloudWatch Logs is created and managed.
 
 ## Overview
 
 The Lambda execution role is **different** from the GitHub Actions deployment role:
 - **GitHub Actions Role**: Used by GitHub Actions to deploy/update the Lambda function
 - **Lambda Execution Role**: Used by the Lambda function itself to access AWS services at runtime
+
+## Automatic Creation (Recommended)
+
+The deployment workflow automatically creates the Lambda execution roles if they don't exist. **You don't need to create them manually** unless you want to customize them.
+
+The workflow will:
+1. Check if the role exists (`country-service-lambda-execution-staging` or `country-service-lambda-execution-production`)
+2. If it doesn't exist, create it with:
+   - Trust policy allowing Lambda service to assume it
+   - Permissions for DynamoDB table access
+   - Permissions for CloudWatch Logs
+3. Use the role ARN when creating the Lambda function
+
+**Note**: If you want to use a custom role, you can still provide `LAMBDA_EXECUTION_ROLE_ARN_STAGING` or `LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION` secrets, and the workflow will use those instead of creating new ones.
+
+## Manual Creation (Optional)
 
 ## Step 1: Create IAM Role for Lambda Execution
 
