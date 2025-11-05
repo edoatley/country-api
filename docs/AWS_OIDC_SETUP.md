@@ -206,10 +206,13 @@ Instead of `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, configure these secr
 | `AWS_ROLE_ARN_PRODUCTION` | `arn:aws:iam::ACCOUNT_ID:role/GitHubActions-Deploy-Production` | IAM role ARN for production |
 | `API_KEY` | Your staging API key | API key for staging environment |
 | `API_KEY_PROD` | Your production API key | API key for production environment |
+| `API_GATEWAY_URL_STAGING` | `https://abc123.execute-api.us-east-1.amazonaws.com` | API Gateway URL for staging (optional, for smoke tests) |
+| `API_GATEWAY_URL_PRODUCTION` | `https://xyz789.execute-api.us-east-1.amazonaws.com` | API Gateway URL for production (optional, for smoke tests) |
 
 **Note**: 
 - You no longer need `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` secrets.
 - For instructions on generating API keys, see [API Key Setup Guide](API_KEY_SETUP.md).
+- `API_GATEWAY_URL_*` secrets are optional but recommended for automated smoke tests after deployment.
 
 ## Step 4: Verify Workflow Configuration
 

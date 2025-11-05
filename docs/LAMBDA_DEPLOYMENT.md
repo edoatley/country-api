@@ -142,8 +142,12 @@ Configure the following secrets in your GitHub repository:
 | `AWS_ROLE_ARN_PRODUCTION` | IAM role ARN for production deployment | `arn:aws:iam::123456789012:role/GitHubActions-Deploy-Production` |
 | `API_KEY` | API key for staging environment | `staging-api-key` |
 | `API_KEY_PROD` | API key for production environment | `prod-api-key` |
+| `API_GATEWAY_URL_STAGING` | API Gateway URL for staging (optional, for smoke tests) | `https://abc123.execute-api.us-east-1.amazonaws.com` |
+| `API_GATEWAY_URL_PRODUCTION` | API Gateway URL for production (optional, for smoke tests) | `https://xyz789.execute-api.us-east-1.amazonaws.com` |
 
-**See [AWS OIDC Setup Guide](AWS_OIDC_SETUP.md) for detailed instructions on setting up OIDC authentication.**
+**See:**
+- [AWS OIDC Setup Guide](AWS_OIDC_SETUP.md) for detailed instructions on setting up OIDC authentication
+- [API Key Setup Guide](API_KEY_SETUP.md) for instructions on generating and configuring API keys
 
 ### Option 2: Access Keys (Legacy - Not Recommended)
 

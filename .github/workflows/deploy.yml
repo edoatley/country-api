@@ -123,16 +123,76 @@ jobs:
             --environment "Variables={AWS_REGION=${{ env.AWS_REGION }},API_KEY=${{ secrets.API_KEY }},DYNAMODB_TABLE_NAME=Countries}" \
             --region ${{ env.AWS_REGION }}
       
+      - name: Install jq (for JSON validation)
+        if: secrets.API_GATEWAY_URL_STAGING != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          
       - name: Run smoke tests
+        if: secrets.API_GATEWAY_URL_STAGING != ''
+        env:
+          API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL_STAGING }}
+          API_KEY: ${{ secrets.API_KEY }}
         run: |
           echo "Running smoke tests against staging environment..."
-          # Wait for Lambda to be ready
-          sleep 10
+          echo "API Gateway URL: $API_GATEWAY_URL"
           
-          # Test health endpoint (if available)
-          # curl -X GET "https://${{ secrets.API_GATEWAY_URL }}/api/v1/countries" \
-          #   -H "X-API-KEY: ${{ secrets.API_KEY }}" \
-          #   -w "\nHTTP Status: %{http_code}\n" || echo "Smoke test failed"
+          # Wait for Lambda to be ready after configuration update
+          echo "Waiting for Lambda to be ready..."
+          sleep 5
+          
+          # Test 1: Health check - GET /api/v1/countries (should return 200 with JSON array)
+          echo "Test 1: GET /api/v1/countries"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$API_GATEWAY_URL/api/v1/countries" \
+            -H "X-API-KEY: $API_KEY" \
+            -H "Content-Type: application/json" || echo -e "\n000")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response body (first 200 chars): ${BODY:0:200}"
+          
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Smoke test failed: Expected HTTP 200, got $HTTP_CODE"
+            echo "Full response: $BODY"
+            exit 1
+          fi
+          
+          # Validate response is valid JSON array
+          if ! echo "$BODY" | jq -e '. | type == "array"' > /dev/null 2>&1; then
+            echo "❌ Smoke test failed: Response is not a valid JSON array"
+            echo "Response: $BODY"
+            exit 1
+          fi
+          
+          echo "✅ Smoke test 1 passed: GET /api/v1/countries returned valid JSON array"
+          
+          # Test 2: Authentication check - request without API key should return 401
+          echo ""
+          echo "Test 2: Authentication validation (no API key)"
+          AUTH_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$API_GATEWAY_URL/api/v1/countries" \
+            -H "Content-Type: application/json" || echo -e "\n000")
+          
+          AUTH_HTTP_CODE=$(echo "$AUTH_RESPONSE" | tail -n1)
+          
+          if [ "$AUTH_HTTP_CODE" == "401" ]; then
+            echo "✅ Smoke test 2 passed: Authentication is working (401 without API key)"
+          else
+            echo "⚠️  Warning: Expected HTTP 401 for unauthenticated request, got $AUTH_HTTP_CODE"
+            echo "This may indicate authentication is not properly configured"
+          fi
+          
+          echo ""
+          echo "✅ All smoke tests passed successfully!"
+          
+      - name: Smoke tests skipped
+        if: secrets.API_GATEWAY_URL_STAGING == ''
+        run: |
+          echo "⚠️  Smoke tests skipped: API_GATEWAY_URL_STAGING secret not configured"
+          echo "To enable smoke tests, add API_GATEWAY_URL_STAGING secret to your GitHub repository"
+          echo "The secret should contain the full API Gateway URL (e.g., https://abc123.execute-api.us-east-1.amazonaws.com)"
 
   deploy-production:
     needs: build
@@ -183,14 +243,74 @@ jobs:
             --environment "Variables={AWS_REGION=${{ env.AWS_REGION }},API_KEY=${{ secrets.API_KEY_PROD }},DYNAMODB_TABLE_NAME=Countries}" \
             --region ${{ env.AWS_REGION }}
       
+      - name: Install jq (for JSON validation)
+        if: secrets.API_GATEWAY_URL_PRODUCTION != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          
       - name: Run smoke tests
+        if: secrets.API_GATEWAY_URL_PRODUCTION != ''
+        env:
+          API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL_PRODUCTION }}
+          API_KEY: ${{ secrets.API_KEY_PROD }}
         run: |
           echo "Running smoke tests against production environment..."
-          # Wait for Lambda to be ready
-          sleep 10
+          echo "API Gateway URL: $API_GATEWAY_URL"
           
-          # Test health endpoint (if available)
-          # curl -X GET "https://${{ secrets.API_GATEWAY_URL_PROD }}/api/v1/countries" \
-          #   -H "X-API-KEY: ${{ secrets.API_KEY_PROD }}" \
-          #   -w "\nHTTP Status: %{http_code}\n" || echo "Smoke test failed"
+          # Wait for Lambda to be ready after configuration update
+          echo "Waiting for Lambda to be ready..."
+          sleep 5
+          
+          # Test 1: Health check - GET /api/v1/countries (should return 200 with JSON array)
+          echo "Test 1: GET /api/v1/countries"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$API_GATEWAY_URL/api/v1/countries" \
+            -H "X-API-KEY: $API_KEY" \
+            -H "Content-Type: application/json" || echo -e "\n000")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response body (first 200 chars): ${BODY:0:200}"
+          
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Smoke test failed: Expected HTTP 200, got $HTTP_CODE"
+            echo "Full response: $BODY"
+            exit 1
+          fi
+          
+          # Validate response is valid JSON array
+          if ! echo "$BODY" | jq -e '. | type == "array"' > /dev/null 2>&1; then
+            echo "❌ Smoke test failed: Response is not a valid JSON array"
+            echo "Response: $BODY"
+            exit 1
+          fi
+          
+          echo "✅ Smoke test 1 passed: GET /api/v1/countries returned valid JSON array"
+          
+          # Test 2: Authentication check - request without API key should return 401
+          echo ""
+          echo "Test 2: Authentication validation (no API key)"
+          AUTH_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$API_GATEWAY_URL/api/v1/countries" \
+            -H "Content-Type: application/json" || echo -e "\n000")
+          
+          AUTH_HTTP_CODE=$(echo "$AUTH_RESPONSE" | tail -n1)
+          
+          if [ "$AUTH_HTTP_CODE" == "401" ]; then
+            echo "✅ Smoke test 2 passed: Authentication is working (401 without API key)"
+          else
+            echo "⚠️  Warning: Expected HTTP 401 for unauthenticated request, got $AUTH_HTTP_CODE"
+            echo "This may indicate authentication is not properly configured"
+          fi
+          
+          echo ""
+          echo "✅ All smoke tests passed successfully!"
+          
+      - name: Smoke tests skipped
+        if: secrets.API_GATEWAY_URL_PRODUCTION == ''
+        run: |
+          echo "⚠️  Smoke tests skipped: API_GATEWAY_URL_PRODUCTION secret not configured"
+          echo "To enable smoke tests, add API_GATEWAY_URL_PRODUCTION secret to your GitHub repository"
+          echo "The secret should contain the full API Gateway URL (e.g., https://abc123.execute-api.us-east-1.amazonaws.com)"
 
