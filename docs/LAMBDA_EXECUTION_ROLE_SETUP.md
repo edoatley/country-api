@@ -1,6 +1,6 @@
 # Lambda Execution Role Setup
 
-This guide explains how the IAM execution role that your Lambda function uses to access AWS services like DynamoDB and CloudWatch Logs is created and managed.
+This guide explains how to create the IAM execution roles that your Lambda function uses to access AWS services like DynamoDB and CloudWatch Logs.
 
 ## Overview
 
@@ -8,21 +8,56 @@ The Lambda execution role is **different** from the GitHub Actions deployment ro
 - **GitHub Actions Role**: Used by GitHub Actions to deploy/update the Lambda function
 - **Lambda Execution Role**: Used by the Lambda function itself to access AWS services at runtime
 
-## Automatic Creation (Recommended)
+## Recommended Approach: CloudFormation
 
-The deployment workflow automatically creates the Lambda execution roles if they don't exist. **You don't need to create them manually** unless you want to customize them.
+The recommended approach is to deploy the Lambda execution roles using CloudFormation. This provides:
+- **Infrastructure as Code**: Roles are defined in version-controlled templates
+- **Idempotent Deployments**: Safe to run multiple times
+- **Easy Updates**: Modify the template and redeploy
+- **Better Security**: No need for `iam:PassRole` permission in GitHub Actions role
 
-The workflow will:
-1. Check if the role exists (`country-service-lambda-execution-staging` or `country-service-lambda-execution-production`)
-2. If it doesn't exist, create it with:
-   - Trust policy allowing Lambda service to assume it
-   - Permissions for DynamoDB table access
-   - Permissions for CloudWatch Logs
-3. Use the role ARN when creating the Lambda function
+## Step 1: Deploy CloudFormation Stack
 
-**Note**: If you want to use a custom role, you can still provide `LAMBDA_EXECUTION_ROLE_ARN_STAGING` or `LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION` secrets, and the workflow will use those instead of creating new ones.
+### Prerequisites
 
-## Manual Creation (Optional)
+- AWS CLI configured with appropriate permissions
+- Permissions to create IAM roles and policies
+
+### Deploy the Stack
+
+1. **Navigate to the infrastructure directory**:
+   ```bash
+   cd infrastructure
+   ```
+
+2. **Deploy the CloudFormation stack**:
+   ```bash
+   ./deploy-roles.sh
+   ```
+
+   Or manually:
+   ```bash
+   aws cloudformation deploy \
+     --template-file lambda-execution-roles.yaml \
+     --stack-name country-service-lambda-execution-roles \
+     --parameter-overrides \
+       DynamoDBTableName=Countries \
+       DynamoDBRegion=us-east-1 \
+     --capabilities CAPABILITY_NAMED_IAM \
+     --region us-east-1
+   ```
+
+3. **Get the role ARNs**:
+   ```bash
+   aws cloudformation describe-stacks \
+     --stack-name country-service-lambda-execution-roles \
+     --query 'Stacks[0].Outputs' \
+     --output table
+   ```
+
+### Alternative: Manual Deployment
+
+If you prefer to create the roles manually or need custom configurations:
 
 ## Step 1: Create IAM Role for Lambda Execution
 
@@ -81,34 +116,51 @@ Create a similar role for production:
 - Role name: `country-service-lambda-execution-production`
 - Same permissions policy (but you may want separate DynamoDB tables for production)
 
-## Step 2: Get the Role ARN
+## Step 2: Configure GitHub Secrets (Optional)
 
-After creating the role, get its ARN:
+After deploying the CloudFormation stack, you can optionally add the role ARNs as GitHub secrets. The workflow will automatically discover the roles from CloudFormation if secrets are not provided.
 
-```bash
-aws iam get-role --role-name country-service-lambda-execution-staging --query 'Role.Arn' --output text
-aws iam get-role --role-name country-service-lambda-execution-production --query 'Role.Arn' --output text
-```
+**Option 1: Use CloudFormation outputs (Recommended)**
+- No secrets needed - the workflow will automatically get the role ARNs from the CloudFormation stack
 
-Or from the IAM Console:
-1. Go to Roles → Select your role
-2. Copy the ARN from the role summary
-
-## Step 3: Configure GitHub Secrets
-
-Add these secrets to your GitHub repository:
+**Option 2: Use GitHub secrets (For explicit control)**
+- Add these secrets to your GitHub repository:
 
 | Secret Name | Value | Description |
 |-------------|-------|-------------|
 | `LAMBDA_EXECUTION_ROLE_ARN_STAGING` | `arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-staging` | IAM role ARN for Lambda execution (staging) |
 | `LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION` | `arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-production` | IAM role ARN for Lambda execution (production) |
 
-## Step 4: Verify
+## Step 3: Verify
 
-The deployment workflow will use these role ARNs when creating Lambda functions. The workflow will automatically:
-1. Check if the Lambda function exists
-2. If it doesn't exist, create it with the specified execution role
-3. If it exists, update the function code
+The deployment workflow will:
+1. Check for `LAMBDA_EXECUTION_ROLE_ARN_*` secrets first
+2. If not found, get role ARNs from CloudFormation stack outputs
+3. If CloudFormation stack doesn't exist, try to get from IAM directly
+4. Use the role ARN when creating Lambda functions
+
+## Updating Roles
+
+To update the roles (e.g., change permissions):
+
+1. **Modify the CloudFormation template** (`infrastructure/lambda-execution-roles.yaml`)
+
+2. **Redeploy the stack**:
+   ```bash
+   cd infrastructure
+   ./deploy-roles.sh
+   ```
+
+   Or manually:
+   ```bash
+   aws cloudformation deploy \
+     --template-file lambda-execution-roles.yaml \
+     --stack-name country-service-lambda-execution-roles \
+     --capabilities CAPABILITY_NAMED_IAM \
+     --region us-east-1
+   ```
+
+3. **No changes needed to Lambda functions** - they will automatically use the updated roles
 
 ## Troubleshooting
 

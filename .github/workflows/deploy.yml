@@ -99,95 +99,40 @@ jobs:
           name: lambda-package
           path: .
       
-      - name: Get AWS Account ID
-        id: get_account_id
-        run: |
-          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          echo "account_id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
-          echo "AWS Account ID: $ACCOUNT_ID"
-      
-      - name: Create or get Lambda execution role
+      - name: Get Lambda execution role ARN
         id: lambda_role
         run: |
-          ROLE_NAME="country-service-lambda-execution-staging"
-          ACCOUNT_ID="${{ steps.get_account_id.outputs.account_id }}"
-          REGION="${{ env.AWS_REGION }}"
-          DYNAMODB_TABLE_NAME="Countries"
-          
-          # Check if role exists
-          if aws iam get-role --role-name "$ROLE_NAME" >/dev/null 2>&1; then
-            echo "Role exists, getting ARN..."
-            ROLE_ARN=$(aws iam get-role --role-name "$ROLE_NAME" --query 'Role.Arn' --output text)
-            echo "role_arn=$ROLE_ARN" >> $GITHUB_OUTPUT
-            echo "Using existing role: $ROLE_ARN"
+          # Use secret if provided, otherwise get from CloudFormation stack or IAM
+          if [ -n "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_STAGING }}" ] && [ "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_STAGING }}" != "" ]; then
+            ROLE_ARN="${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_STAGING }}"
+            echo "Using role ARN from secret: $ROLE_ARN"
           else
-            echo "Role does not exist, creating it..."
-            
-            # Create trust policy for Lambda
-            cat > /tmp/trust-policy.json <<EOF
-          {
-            "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Effect": "Allow",
-                "Principal": {
-                  "Service": "lambda.amazonaws.com"
-                },
-                "Action": "sts:AssumeRole"
-              }
-            ]
-          }
-          EOF
-            
-            # Create permissions policy
-            cat > /tmp/permissions-policy.json <<EOF
-          {
-            "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Effect": "Allow",
-                "Action": [
-                  "dynamodb:Query",
-                  "dynamodb:GetItem",
-                  "dynamodb:PutItem",
-                  "dynamodb:UpdateItem",
-                  "dynamodb:Scan"
-                ],
-                "Resource": [
-                  "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${DYNAMODB_TABLE_NAME}",
-                  "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${DYNAMODB_TABLE_NAME}/index/*"
-                ]
-              },
-              {
-                "Effect": "Allow",
-                "Action": [
-                  "logs:CreateLogGroup",
-                  "logs:CreateLogStream",
-                  "logs:PutLogEvents"
-                ],
-                "Resource": "arn:aws:logs:*:*:*"
-              }
-            ]
-          }
-          EOF
-            
-            # Create the role
-            aws iam create-role \
-              --role-name "$ROLE_NAME" \
-              --assume-role-policy-document file:///tmp/trust-policy.json
-            
-            # Create and attach permissions policy
-            POLICY_NAME="${ROLE_NAME}-policy"
-            aws iam put-role-policy \
-              --role-name "$ROLE_NAME" \
-              --policy-name "$POLICY_NAME" \
-              --policy-document file:///tmp/permissions-policy.json
-            
-            # Get the role ARN
-            ROLE_ARN=$(aws iam get-role --role-name "$ROLE_NAME" --query 'Role.Arn' --output text)
-            echo "role_arn=$ROLE_ARN" >> $GITHUB_OUTPUT
-            echo "Created role: $ROLE_ARN"
+            # Try to get from CloudFormation stack
+            STACK_NAME="country-service-lambda-execution-roles"
+            if aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+              echo "Getting role ARN from CloudFormation stack..."
+              ROLE_ARN=$(aws cloudformation describe-stacks \
+                --stack-name "$STACK_NAME" \
+                --region ${{ env.AWS_REGION }} \
+                --query 'Stacks[0].Outputs[?OutputKey==`LambdaExecutionRoleArnStaging`].OutputValue' \
+                --output text)
+              echo "Got role ARN from CloudFormation: $ROLE_ARN"
+            else
+              # Fallback: try to get from IAM directly
+              ROLE_NAME="country-service-lambda-execution-staging"
+              if aws iam get-role --role-name "$ROLE_NAME" >/dev/null 2>&1; then
+                ROLE_ARN=$(aws iam get-role --role-name "$ROLE_NAME" --query 'Role.Arn' --output text)
+                echo "Got role ARN from IAM: $ROLE_ARN"
+              else
+                echo "❌ Error: Lambda execution role not found"
+                echo "Please deploy the CloudFormation stack or configure LAMBDA_EXECUTION_ROLE_ARN_STAGING secret"
+                echo "See infrastructure/lambda-execution-roles.yaml and infrastructure/deploy-roles.sh"
+                exit 1
+              fi
+            fi
           fi
+          echo "role_arn=$ROLE_ARN" >> $GITHUB_OUTPUT
+          echo "Using Lambda execution role: $ROLE_ARN"
       
       - name: Deploy Lambda function
         run: |
@@ -349,95 +294,40 @@ jobs:
           name: lambda-package
           path: .
       
-      - name: Get AWS Account ID
-        id: get_account_id
-        run: |
-          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          echo "account_id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
-          echo "AWS Account ID: $ACCOUNT_ID"
-      
-      - name: Create or get Lambda execution role
+      - name: Get Lambda execution role ARN
         id: lambda_role
         run: |
-          ROLE_NAME="country-service-lambda-execution-production"
-          ACCOUNT_ID="${{ steps.get_account_id.outputs.account_id }}"
-          REGION="${{ env.AWS_REGION }}"
-          DYNAMODB_TABLE_NAME="Countries"
-          
-          # Check if role exists
-          if aws iam get-role --role-name "$ROLE_NAME" >/dev/null 2>&1; then
-            echo "Role exists, getting ARN..."
-            ROLE_ARN=$(aws iam get-role --role-name "$ROLE_NAME" --query 'Role.Arn' --output text)
-            echo "role_arn=$ROLE_ARN" >> $GITHUB_OUTPUT
-            echo "Using existing role: $ROLE_ARN"
+          # Use secret if provided, otherwise get from CloudFormation stack or IAM
+          if [ -n "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION }}" ] && [ "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION }}" != "" ]; then
+            ROLE_ARN="${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION }}"
+            echo "Using role ARN from secret: $ROLE_ARN"
           else
-            echo "Role does not exist, creating it..."
-            
-            # Create trust policy for Lambda
-            cat > /tmp/trust-policy.json <<EOF
-          {
-            "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Effect": "Allow",
-                "Principal": {
-                  "Service": "lambda.amazonaws.com"
-                },
-                "Action": "sts:AssumeRole"
-              }
-            ]
-          }
-          EOF
-            
-            # Create permissions policy
-            cat > /tmp/permissions-policy.json <<EOF
-          {
-            "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Effect": "Allow",
-                "Action": [
-                  "dynamodb:Query",
-                  "dynamodb:GetItem",
-                  "dynamodb:PutItem",
-                  "dynamodb:UpdateItem",
-                  "dynamodb:Scan"
-                ],
-                "Resource": [
-                  "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${DYNAMODB_TABLE_NAME}",
-                  "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${DYNAMODB_TABLE_NAME}/index/*"
-                ]
-              },
-              {
-                "Effect": "Allow",
-                "Action": [
-                  "logs:CreateLogGroup",
-                  "logs:CreateLogStream",
-                  "logs:PutLogEvents"
-                ],
-                "Resource": "arn:aws:logs:*:*:*"
-              }
-            ]
-          }
-          EOF
-            
-            # Create the role
-            aws iam create-role \
-              --role-name "$ROLE_NAME" \
-              --assume-role-policy-document file:///tmp/trust-policy.json
-            
-            # Create and attach permissions policy
-            POLICY_NAME="${ROLE_NAME}-policy"
-            aws iam put-role-policy \
-              --role-name "$ROLE_NAME" \
-              --policy-name "$POLICY_NAME" \
-              --policy-document file:///tmp/permissions-policy.json
-            
-            # Get the role ARN
-            ROLE_ARN=$(aws iam get-role --role-name "$ROLE_NAME" --query 'Role.Arn' --output text)
-            echo "role_arn=$ROLE_ARN" >> $GITHUB_OUTPUT
-            echo "Created role: $ROLE_ARN"
+            # Try to get from CloudFormation stack
+            STACK_NAME="country-service-lambda-execution-roles"
+            if aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+              echo "Getting role ARN from CloudFormation stack..."
+              ROLE_ARN=$(aws cloudformation describe-stacks \
+                --stack-name "$STACK_NAME" \
+                --region ${{ env.AWS_REGION }} \
+                --query 'Stacks[0].Outputs[?OutputKey==`LambdaExecutionRoleArnProduction`].OutputValue' \
+                --output text)
+              echo "Got role ARN from CloudFormation: $ROLE_ARN"
+            else
+              # Fallback: try to get from IAM directly
+              ROLE_NAME="country-service-lambda-execution-production"
+              if aws iam get-role --role-name "$ROLE_NAME" >/dev/null 2>&1; then
+                ROLE_ARN=$(aws iam get-role --role-name "$ROLE_NAME" --query 'Role.Arn' --output text)
+                echo "Got role ARN from IAM: $ROLE_ARN"
+              else
+                echo "❌ Error: Lambda execution role not found"
+                echo "Please deploy the CloudFormation stack or configure LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION secret"
+                echo "See infrastructure/lambda-execution-roles.yaml and infrastructure/deploy-roles.sh"
+                exit 1
+              fi
+            fi
           fi
+          echo "role_arn=$ROLE_ARN" >> $GITHUB_OUTPUT
+          echo "Using Lambda execution role: $ROLE_ARN"
       
       - name: Deploy Lambda function
         run: |
@@ -462,10 +352,12 @@ jobs:
           else
             echo "Function does not exist, creating it..."
             # Create Lambda function
-            # Use role ARN from step output (or secret if provided)
-            EXECUTION_ROLE="${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION }}"
+            # Use role ARN from step output
+            EXECUTION_ROLE="${{ steps.lambda_role.outputs.role_arn }}"
             if [ -z "$EXECUTION_ROLE" ] || [ "$EXECUTION_ROLE" == "" ]; then
-              EXECUTION_ROLE="${{ steps.lambda_role.outputs.role_arn }}"
+              echo "❌ Error: Lambda execution role ARN not found"
+              echo "Please deploy the CloudFormation stack or configure LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION secret"
+              exit 1
             fi
             echo "Using Lambda execution role: $EXECUTION_ROLE"
             aws lambda create-function \

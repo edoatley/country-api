@@ -149,13 +149,30 @@ The role needs permissions to:
     {
       "Effect": "Allow",
       "Action": [
-        "iam:CreateRole",
-        "iam:GetRole",
-        "iam:PutRolePolicy",
-        "iam:GetRolePolicy",
-        "iam:ListRolePolicies"
+        "iam:PassRole"
       ],
-      "Resource": "arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-staging"
+      "Resource": [
+        "arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-staging",
+        "arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-production"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-staging",
+        "arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-production"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackOutputs"
+      ],
+      "Resource": "arn:aws:cloudformation:*:ACCOUNT_ID:stack/country-service-lambda-execution-roles/*"
     },
     {
       "Effect": "Allow",
