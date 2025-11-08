@@ -117,9 +117,6 @@ Resources:
       DeploymentId: !Ref ApiGatewayDeployment
       StageName: !Sub '${Environment}'
       Description: !Sub '${Environment} stage'
-      ThrottleSettings:
-        RateLimit: 2  # Requests per second (50,000/month ≈ 1.16 req/min ≈ 0.02 req/sec, using 2 for safety)
-        BurstLimit: 5  # Burst capacity (allows short spikes)
 
   # API Key for authentication and throttling
   ApiGatewayApiKey:
