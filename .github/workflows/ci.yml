@@ -1,6 +1,14 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - '**'  # Run on all branches
+    tags-ignore:
+      - '**'  # Ignore all tags
+  pull_request:
+    branches:
+      - '**'  # Run on all branches
 
 permissions:
   checks: write

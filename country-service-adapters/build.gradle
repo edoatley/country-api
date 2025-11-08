@@ -1,6 +1,7 @@
 plugins {
     id 'java-library'
     id 'io.spring.dependency-management' version '1.1.4'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 dependencyManagement {
@@ -26,4 +27,44 @@ dependencies {
     testImplementation 'org.testcontainers:localstack:1.21.3'
     testImplementation 'org.testcontainers:junit-jupiter:1.21.3'
     testImplementation 'org.awaitility:awaitility:4.3.0'
+}
+
+// Lambda deployment package configuration
+shadowJar {
+    archiveBaseName = 'country-service-lambda'
+    archiveClassifier = ''
+    archiveVersion = project.version
+    
+    // Merge service files to avoid conflicts
+    mergeServiceFiles()
+    
+    // Exclude test dependencies from deployment package
+    configurations = [project.configurations.runtimeClasspath]
+    
+    // Manifest attributes for Lambda
+    manifest {
+        attributes(
+            'Main-Class': 'com.example.country.adapters.lambda.LambdaEntryPoint'
+        )
+    }
+}
+
+// Task to build Lambda deployment package
+task buildLambdaPackage(type: com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    dependsOn classes
+    group = 'build'
+    description = 'Builds the Lambda deployment package (fat JAR)'
+    
+    from(sourceSets.main.output)
+    configurations = [project.configurations.runtimeClasspath]
+    
+    archiveBaseName = 'country-service-lambda'
+    archiveClassifier = ''
+    archiveVersion = project.version
+    
+    mergeServiceFiles()
+    
+    // Exclude test files
+    exclude '**/*Test.class'
+    exclude '**/*Tests.class'
 }

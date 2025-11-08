@@ -1,0 +1,435 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Lambda function and API Gateway for Country Reference Service'
+
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment name (staging or production)
+    AllowedValues:
+      - staging
+      - production
+  LambdaExecutionRoleArn:
+    Type: String
+    Description: ARN of the Lambda execution role
+  CodeS3Bucket:
+    Type: String
+    Description: S3 bucket containing the Lambda deployment package
+  CodeS3Key:
+    Type: String
+    Description: S3 key of the Lambda deployment package
+  ApiKey:
+    Type: String
+    Description: API key for authentication
+    NoEcho: true
+  DynamoDBTableName:
+    Type: String
+    Default: Countries
+    Description: DynamoDB table name
+  Timeout:
+    Type: Number
+    Default: 30
+    Description: Lambda function timeout in seconds
+  MemorySize:
+    Type: Number
+    Default: 512
+    Description: Lambda function memory size in MB
+
+Resources:
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'country-service-lambda-${Environment}'
+      Runtime: java21
+      Role: !Ref LambdaExecutionRoleArn
+      Handler: com.example.country.adapters.lambda.LambdaEntryPoint::handleRequest
+      Code:
+        S3Bucket: !Ref CodeS3Bucket
+        S3Key: !Ref CodeS3Key
+      Timeout: !Ref Timeout
+      MemorySize: !Ref MemorySize
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          API_KEY: !Ref ApiKey
+          DYNAMODB_TABLE_NAME: !Ref DynamoDBTableName
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: country-service
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # API Gateway REST API
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub 'country-service-api-${Environment}'
+      Description: Country Reference Service API
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Policy: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": "*",
+              "Action": "execute-api:Invoke",
+              "Resource": "*"
+            }
+          ]
+        }
+
+  # Lambda Permission for API Gateway
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*'
+  
+
+  # API Gateway Deployment
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - ApiGatewayMethodGetCountries
+      - ApiGatewayMethodPostCountries
+      - ApiGatewayMethodGetCountryByCode
+      - ApiGatewayMethodPutCountryByCode
+      - ApiGatewayMethodDeleteCountryByCode
+      - ApiGatewayMethodGetCountryHistory
+      - ApiGatewayMethodGetCountryByAlpha3
+      - ApiGatewayMethodGetCountryByNumeric
+    Properties:
+      RestApiId: !Ref ApiGateway
+      Description: !Sub '${Environment} stage deployment'
+
+  # API Gateway Stage
+  ApiGatewayStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref ApiGateway
+      DeploymentId: !Ref ApiGatewayDeployment
+      StageName: !Sub '${Environment}'
+      Description: !Sub '${Environment} stage'
+
+  # API Key for authentication and throttling
+  ApiGatewayApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    Properties:
+      Name: !Sub 'country-service-api-key-${Environment}'
+      Description: !Sub 'API key for ${Environment} environment'
+      Enabled: true
+      GenerateDistinctId: true
+
+  # Usage Plan with throttling limits (50,000 requests/month)
+  ApiGatewayUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      UsagePlanName: !Sub 'country-service-usage-plan-${Environment}'
+      Description: !Sub 'Usage plan for ${Environment} - 50,000 requests/month limit'
+      ApiStages:
+        - ApiId: !Ref ApiGateway
+          Stage: !Sub '${Environment}'
+      Throttle:
+        # 50,000 requests/month = ~1,667 requests/day = ~69 requests/hour = ~1.16 requests/minute
+        # Using 2 requests/second (5,184,000/month) with quota to limit to 50,000/month
+        RateLimit: 2  # Requests per second
+        BurstLimit: 5  # Burst capacity
+      Quota:
+        Limit: 50000  # Monthly quota limit
+        Period: MONTH
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: country-service
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # Associate API Key with Usage Plan
+  ApiGatewayUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref ApiGatewayApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref ApiGatewayUsagePlan
+
+  # Resource: /api/v1/countries
+  ApiResourceCountries:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: api
+
+  ApiResourceV1:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !Ref ApiResourceCountries
+      PathPart: v1
+
+  ApiResourceCountriesPath:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !Ref ApiResourceV1
+      PathPart: countries
+
+  # GET /api/v1/countries
+  ApiGatewayMethodGetCountries:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiResourceCountriesPath
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations'
+      MethodResponses:
+        - StatusCode: 200
+        - StatusCode: 401
+        - StatusCode: 500
+
+  # POST /api/v1/countries
+  ApiGatewayMethodPostCountries:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiResourceCountriesPath
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations'
+      MethodResponses:
+        - StatusCode: 201
+        - StatusCode: 400
+        - StatusCode: 401
+        - StatusCode: 500
+
+  # Resource: /api/v1/countries/code/{alpha2Code}
+  ApiResourceCode:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !Ref ApiResourceCountriesPath
+      PathPart: code
+
+  ApiResourceAlpha2Code:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !Ref ApiResourceCode
+      PathPart: '{alpha2Code}'
+
+  # GET /api/v1/countries/code/{alpha2Code}
+  ApiGatewayMethodGetCountryByCode:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiResourceAlpha2Code
+      HttpMethod: GET
+      AuthorizationType: NONE
+      RequestParameters:
+        method.request.path.alpha2Code: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations'
+      MethodResponses:
+        - StatusCode: 200
+        - StatusCode: 404
+        - StatusCode: 401
+        - StatusCode: 500
+
+  # PUT /api/v1/countries/code/{alpha2Code}
+  ApiGatewayMethodPutCountryByCode:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiResourceAlpha2Code
+      HttpMethod: PUT
+      AuthorizationType: NONE
+      RequestParameters:
+        method.request.path.alpha2Code: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations'
+      MethodResponses:
+        - StatusCode: 200
+        - StatusCode: 400
+        - StatusCode: 401
+        - StatusCode: 500
+
+  # DELETE /api/v1/countries/code/{alpha2Code}
+  ApiGatewayMethodDeleteCountryByCode:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiResourceAlpha2Code
+      HttpMethod: DELETE
+      AuthorizationType: NONE
+      RequestParameters:
+        method.request.path.alpha2Code: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations'
+      MethodResponses:
+        - StatusCode: 204
+        - StatusCode: 404
+        - StatusCode: 401
+        - StatusCode: 500
+
+  # Resource: /api/v1/countries/code/{alpha2Code}/history
+  ApiResourceHistory:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !Ref ApiResourceAlpha2Code
+      PathPart: history
+
+  # GET /api/v1/countries/code/{alpha2Code}/history
+  ApiGatewayMethodGetCountryHistory:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiResourceHistory
+      HttpMethod: GET
+      AuthorizationType: NONE
+      RequestParameters:
+        method.request.path.alpha2Code: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations'
+      MethodResponses:
+        - StatusCode: 200
+        - StatusCode: 404
+        - StatusCode: 401
+        - StatusCode: 500
+
+  # Resource: /api/v1/countries/code3/{alpha3Code}
+  ApiResourceCode3:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !Ref ApiResourceCountriesPath
+      PathPart: code3
+
+  ApiResourceAlpha3Code:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !Ref ApiResourceCode3
+      PathPart: '{alpha3Code}'
+
+  # GET /api/v1/countries/code3/{alpha3Code}
+  ApiGatewayMethodGetCountryByAlpha3:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiResourceAlpha3Code
+      HttpMethod: GET
+      AuthorizationType: NONE
+      RequestParameters:
+        method.request.path.alpha3Code: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations'
+      MethodResponses:
+        - StatusCode: 200
+        - StatusCode: 404
+        - StatusCode: 401
+        - StatusCode: 500
+
+  # Resource: /api/v1/countries/number/{numericCode}
+  ApiResourceNumber:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !Ref ApiResourceCountriesPath
+      PathPart: number
+
+  ApiResourceNumericCode:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !Ref ApiResourceNumber
+      PathPart: '{numericCode}'
+
+  # GET /api/v1/countries/number/{numericCode}
+  ApiGatewayMethodGetCountryByNumeric:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiResourceNumericCode
+      HttpMethod: GET
+      AuthorizationType: NONE
+      RequestParameters:
+        method.request.path.numericCode: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations'
+      MethodResponses:
+        - StatusCode: 200
+        - StatusCode: 404
+        - StatusCode: 401
+        - StatusCode: 500
+
+Outputs:
+  LambdaFunctionArn:
+    Description: ARN of the Lambda function
+    Value: !GetAtt LambdaFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaFunctionArn'
+
+  LambdaFunctionName:
+    Description: Name of the Lambda function
+    Value: !Ref LambdaFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaFunctionName'
+
+  ApiGatewayId:
+    Description: ID of the API Gateway
+    Value: !Ref ApiGateway
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayId'
+
+  ApiGatewayUrl:
+    Description: URL of the API Gateway
+    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayUrl'
+
+  ApiGatewayRootUrl:
+    Description: Root URL of the API Gateway
+    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/api/v1'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayRootUrl'
+
+  ApiKeyId:
+    Description: ID of the API Key
+    Value: !Ref ApiGatewayApiKey
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiKeyId'
+
+  UsagePlanId:
+    Description: ID of the Usage Plan (50,000 requests/month limit)
+    Value: !Ref ApiGatewayUsagePlan
+    Export:
+      Name: !Sub '${AWS::StackName}-UsagePlanId'
+

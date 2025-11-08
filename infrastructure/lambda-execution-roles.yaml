@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Lambda execution roles for Country Reference Service'
+
+Parameters:
+  DynamoDBTableName:
+    Type: String
+    Default: Countries
+    Description: Name of the DynamoDB table
+  DynamoDBRegion:
+    Type: String
+    Default: us-east-1
+    Description: AWS region where DynamoDB table is located
+
+Resources:
+  # Staging Lambda Execution Role
+  LambdaExecutionRoleStaging:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: country-service-lambda-execution-staging
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: DynamoDBAndLogsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Query
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Scan
+                Resource:
+                  - !Sub 'arn:aws:dynamodb:${DynamoDBRegion}:${AWS::AccountId}:table/${DynamoDBTableName}'
+                  - !Sub 'arn:aws:dynamodb:${DynamoDBRegion}:${AWS::AccountId}:table/${DynamoDBTableName}/index/*'
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 'arn:aws:logs:*:*:*'
+      Tags:
+        - Key: Environment
+          Value: staging
+        - Key: Service
+          Value: country-service
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # Production Lambda Execution Role
+  LambdaExecutionRoleProduction:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: country-service-lambda-execution-production
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: DynamoDBAndLogsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Query
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Scan
+                Resource:
+                  - !Sub 'arn:aws:dynamodb:${DynamoDBRegion}:${AWS::AccountId}:table/${DynamoDBTableName}'
+                  - !Sub 'arn:aws:dynamodb:${DynamoDBRegion}:${AWS::AccountId}:table/${DynamoDBTableName}/index/*'
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 'arn:aws:logs:*:*:*'
+      Tags:
+        - Key: Environment
+          Value: production
+        - Key: Service
+          Value: country-service
+        - Key: ManagedBy
+          Value: CloudFormation
+
+Outputs:
+  LambdaExecutionRoleArnStaging:
+    Description: ARN of the Lambda execution role for staging
+    Value: !GetAtt LambdaExecutionRoleStaging.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaExecutionRoleArnStaging'
+
+  LambdaExecutionRoleArnProduction:
+    Description: ARN of the Lambda execution role for production
+    Value: !GetAtt LambdaExecutionRoleProduction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaExecutionRoleArnProduction'
+
