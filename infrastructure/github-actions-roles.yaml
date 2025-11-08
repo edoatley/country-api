@@ -90,9 +90,12 @@ Resources:
                 Action:
                   - cloudformation:DescribeStacks
                   - cloudformation:DescribeStackOutputs
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:GetTemplateSummary
                   - cloudformation:CreateStack
                   - cloudformation:UpdateStack
                   - cloudformation:DeleteStack
+                  - cloudformation:ValidateTemplate
                 Resource: !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:stack/country-service-*/*'
               - Effect: Allow
                 Action:
@@ -184,9 +187,12 @@ Resources:
                 Action:
                   - cloudformation:DescribeStacks
                   - cloudformation:DescribeStackOutputs
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:GetTemplateSummary
                   - cloudformation:CreateStack
                   - cloudformation:UpdateStack
                   - cloudformation:DeleteStack
+                  - cloudformation:ValidateTemplate
                 Resource: !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:stack/country-service-*/*'
               - Effect: Allow
                 Action:
