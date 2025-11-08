@@ -102,6 +102,99 @@ The GitHub Actions deployment workflow will automatically:
 
 **No secrets required** if the CloudFormation stack is deployed - the workflow will discover the roles automatically.
 
+## GitHub Actions Deployment Roles
+
+### Template: `github-actions-roles.yaml`
+
+CloudFormation template that creates IAM roles for GitHub Actions to deploy Lambda functions. These roles provide permissions for:
+- Lambda function creation and updates
+- Passing Lambda execution roles to Lambda (`iam:PassRole`)
+- Reading CloudFormation stack outputs
+- OIDC authentication with GitHub Actions
+
+### Deployment Script: `deploy-github-actions-roles.sh`
+
+Script to deploy the GitHub Actions deployment roles using CloudFormation.
+
+**Usage:**
+```bash
+cd infrastructure
+./deploy-github-actions-roles.sh [region] [profile]
+```
+
+Or with environment variable:
+```bash
+AWS_PROFILE=streaming ./deploy-github-actions-roles.sh
+```
+
+**Prerequisites:**
+- AWS CLI configured with appropriate permissions
+- Permissions to create IAM roles and OIDC providers
+- Lambda execution roles stack must be deployed first (or provide role ARNs as parameters)
+
+**What it does:**
+1. Detects GitHub org/repo from git remote (or prompts for input)
+2. Checks for existing OIDC provider
+3. Gets Lambda execution role ARNs from CloudFormation stack (if available)
+4. Deploys the CloudFormation stack `country-service-github-actions-roles`
+5. Creates two IAM roles:
+   - `GitHubActions-Deploy-Staging` (allows deployments from main branch and v* tags)
+   - `GitHubActions-Deploy-Production` (allows deployments from workflow_dispatch only)
+6. Outputs the role ARNs for use in GitHub secrets
+
+**Parameters:**
+- `GitHubOrg`: GitHub organization or username (auto-detected from git remote)
+- `GitHubRepo`: GitHub repository name (auto-detected from git remote)
+- `OIDCProviderArn`: ARN of existing OIDC provider (optional - will create if not provided)
+- `LambdaExecutionRoleArnStaging`: ARN of Lambda execution role for staging (optional - auto-detected from stack)
+- `LambdaExecutionRoleArnProduction`: ARN of Lambda execution role for production (optional - auto-detected from stack)
+
+**Outputs:**
+- `GitHubActionsRoleArnStaging`: ARN of the staging deployment role
+- `GitHubActionsRoleArnProduction`: ARN of the production deployment role
+- `OIDCProviderArn`: ARN of the OIDC provider (created or existing)
+
+### Manual Deployment
+
+If you prefer to deploy manually:
+
+```bash
+aws cloudformation deploy \
+  --template-file github-actions-roles.yaml \
+  --stack-name country-service-github-actions-roles \
+  --parameter-overrides \
+    GitHubOrg=YOUR_GITHUB_ORG \
+    GitHubRepo=YOUR_REPO \
+    OIDCProviderArn=arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com \
+    LambdaExecutionRoleArnStaging=arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-staging \
+    LambdaExecutionRoleArnProduction=arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-production \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --region us-east-1
+```
+
+### Updating Roles
+
+To update the roles (e.g., change permissions or trust policy):
+
+1. **Modify the CloudFormation template** (`infrastructure/github-actions-roles.yaml`)
+
+2. **Redeploy the stack**:
+   ```bash
+   ./deploy-github-actions-roles.sh
+   ```
+
+### Deleting the Stack
+
+To remove all roles:
+
+```bash
+aws cloudformation delete-stack \
+  --stack-name country-service-github-actions-roles \
+  --region us-east-1
+```
+
+**Note**: This will fail if any GitHub Actions workflows are still using these roles. You must first update or remove those workflows.
+
 ## See Also
 
 - [Lambda Execution Role Setup Guide](../docs/LAMBDA_EXECUTION_ROLE_SETUP.md)
