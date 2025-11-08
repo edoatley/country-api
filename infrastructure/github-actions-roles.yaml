@@ -88,6 +88,23 @@ Resources:
                 Resource: !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:stack/country-service-lambda-execution-roles/*'
               - Effect: Allow
                 Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackOutputs
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
+                Resource: !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:stack/country-service-*/*'
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: !Sub 'arn:aws:s3:::country-service-lambda-deployments/*'
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub 'arn:aws:s3:::country-service-lambda-deployments'
+              - Effect: Allow
+                Action:
                   - sts:GetCallerIdentity
                 Resource: '*'
       Tags:
@@ -163,6 +180,23 @@ Resources:
                   - cloudformation:DescribeStacks
                   - cloudformation:DescribeStackOutputs
                 Resource: !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:stack/country-service-lambda-execution-roles/*'
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackOutputs
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
+                Resource: !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:stack/country-service-*/*'
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: !Sub 'arn:aws:s3:::country-service-lambda-deployments/*'
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub 'arn:aws:s3:::country-service-lambda-deployments'
               - Effect: Allow
                 Action:
                   - sts:GetCallerIdentity
