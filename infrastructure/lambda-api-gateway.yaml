@@ -424,3 +424,15 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-ApiGatewayRootUrl'
 
+  ApiKeyId:
+    Description: ID of the API Key
+    Value: !Ref ApiGatewayApiKey
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiKeyId'
+
+  UsagePlanId:
+    Description: ID of the Usage Plan (50,000 requests/month limit)
+    Value: !Ref ApiGatewayUsagePlan
+    Export:
+      Name: !Sub '${AWS::StackName}-UsagePlanId'
+

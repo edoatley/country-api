@@ -95,6 +95,22 @@ This document provides cost estimates for the Country Reference Service infrastr
 - S3: $0.01
 - **Total: ~$712.01/month**
 
+## Throttling Protection
+
+The API Gateway is configured with throttling limits to protect against unexpected costs:
+
+- **Monthly Quota**: 50,000 requests/month (hard limit)
+- **Rate Limit**: 2 requests/second (sustained rate)
+- **Burst Limit**: 5 requests (short-term spikes)
+
+When the quota is exceeded, API Gateway will return `429 Too Many Requests` errors.
+
+**Cost Protection**: With throttling enabled, maximum monthly cost is capped at:
+- Lambda: ~$0.09 (50K requests)
+- API Gateway: ~$0.18 (50K requests)
+- DynamoDB: ~$0.09 (50K operations)
+- **Total: ~$0.36/month maximum** (with 50K request limit)
+
 ## Idle Cost (No Traffic)
 
 If the infrastructure is left running with **zero traffic**:
