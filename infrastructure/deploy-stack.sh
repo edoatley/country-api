@@ -151,12 +151,33 @@ $AWS_CMD cloudformation deploy \
   --region "$REGION" || {
     echo ""
     echo "❌ Deployment failed. Checking stack events..."
+    echo ""
+    echo "=== Failed Resources ==="
+    FAILED_EVENTS=$($AWS_CMD cloudformation describe-stack-events \
+      --stack-name "$STACK_NAME" \
+      --region "$REGION" \
+      --max-items 50 \
+      --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED` || ResourceStatus==`DELETE_FAILED` || ResourceStatus==`ROLLBACK_IN_PROGRESS`] | reverse(sort_by(@, &Timestamp)) | [0:5]' \
+      --output json 2>/dev/null || echo "[]")
+    
+    if [ "$FAILED_EVENTS" != "[]" ] && [ -n "$FAILED_EVENTS" ]; then
+      echo "$FAILED_EVENTS" | python3 -m json.tool 2>/dev/null || echo "$FAILED_EVENTS"
+    else
+      echo "No failed events found. Checking recent events..."
+    fi
+    
+    echo ""
+    echo "=== Recent Stack Events (last 15) ==="
     $AWS_CMD cloudformation describe-stack-events \
       --stack-name "$STACK_NAME" \
       --region "$REGION" \
-      --max-items 5 \
-      --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED`].[Timestamp,LogicalResourceId,ResourceStatusReason]' \
+      --max-items 15 \
+      --query 'reverse(sort_by(StackEvents, &Timestamp)) | [].[Timestamp,LogicalResourceId,ResourceStatus,ResourceStatusReason]' \
       --output table 2>/dev/null || true
+    
+    echo ""
+    echo "For more details, run:"
+    echo "  aws cloudformation describe-stack-events --stack-name $STACK_NAME --region $REGION"
     exit 1
   }
 
