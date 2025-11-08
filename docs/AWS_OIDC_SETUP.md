@@ -121,8 +121,11 @@ Replace `ACCOUNT_ID`, `YOUR_GITHUB_ORG`, and `YOUR_REPO` with your values:
 
 The role needs permissions to:
 - Create/update Lambda functions
-- Create/update Lambda execution roles
+- Pass Lambda execution roles to Lambda (required for `lambda:CreateFunction`)
+- Read CloudFormation stack outputs (to discover role ARNs)
 - Get AWS account ID
+
+**⚠️ Important**: The `iam:PassRole` permission is **required** and must be granted on the specific Lambda execution role ARNs. Without this permission, you will get an `AccessDeniedException` when trying to create Lambda functions.
 
 ```json
 {
@@ -318,6 +321,45 @@ permissions:
 **Solution:**
 - Use alphanumeric characters and hyphens only
 - Keep it under 64 characters
+
+### Error: "User is not authorized to perform: iam:PassRole"
+
+**This is a common error when creating Lambda functions.**
+
+**Possible causes:**
+- The GitHub Actions deployment role doesn't have `iam:PassRole` permission for the Lambda execution roles
+
+**Solution:**
+1. **Go to IAM Console** → Roles → Select your GitHub Actions deployment role (e.g., `GitHubActions-Deploy-Staging`)
+
+2. **Add or update the permissions policy** to include `iam:PassRole`:
+
+   ```json
+   {
+     "Effect": "Allow",
+     "Action": [
+       "iam:PassRole"
+     ],
+     "Resource": [
+       "arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-staging",
+       "arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-production"
+     ]
+   }
+   ```
+
+3. **Replace `ACCOUNT_ID`** with your AWS account ID (e.g., `727361020121`)
+
+4. **Important**: The `iam:PassRole` permission must be granted on the **specific role ARNs** that you want to pass to Lambda. You cannot use wildcards (`*`) for the resource in `iam:PassRole` permissions.
+
+5. **Verify the role ARNs** match exactly what was created by CloudFormation:
+   ```bash
+   aws cloudformation describe-stacks \
+     --stack-name country-service-lambda-execution-roles \
+     --query 'Stacks[0].Outputs' \
+     --output table
+   ```
+
+**Note**: This permission is required because when creating a Lambda function, you must "pass" the execution role to Lambda. The `iam:PassRole` permission allows the GitHub Actions role to specify which execution role the Lambda function should use.
 
 ## Security Best Practices
 
