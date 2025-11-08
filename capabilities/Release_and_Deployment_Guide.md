@@ -59,13 +59,6 @@ This guide defines how we version, build, test, package, and deploy the Country 
   - Evaluate migrating to `aws-actions/aws-cloudformation-github-deploy` GitHub Action
   - Reference: https://aws.amazon.com/blogs/opensource/deploy-aws-cloudformation-stacks-with-github-actions/
   - Benefits: Simpler workflow YAML, maintained by AWS, built-in change set handling
-  3. Build Lambda package (`gradlew :country-service-adapters:buildLambdaPackage`)
-  4. Upload Lambda package artifact
-  5. Deploy to `staging` (automatic on tag) or selected environment (manual)
-  6. Update Lambda function code and environment variables
-  7. Run smoke tests (if configured)
-  8. Manual approval step for production
-  9. Deploy to `prod` (manual only, requires approval)
 
 ### Sample workflow yaml (excerpt)
 ```yaml
