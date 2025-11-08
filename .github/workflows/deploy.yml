@@ -184,7 +184,7 @@ jobs:
         run: |
           aws lambda update-function-configuration \
             --function-name ${{ env.LAMBDA_FUNCTION_NAME }}-staging \
-            --environment "Variables={AWS_REGION=${{ env.AWS_REGION }},API_KEY=${{ secrets.API_KEY }},DYNAMODB_TABLE_NAME=Countries}" \
+            --environment "Variables={API_KEY=${{ secrets.API_KEY }},DYNAMODB_TABLE_NAME=Countries}" \
             --region ${{ env.AWS_REGION }}
       
       - name: Check if smoke tests should run
@@ -381,7 +381,7 @@ jobs:
         run: |
           aws lambda update-function-configuration \
             --function-name ${{ env.LAMBDA_FUNCTION_NAME }}-production \
-            --environment "Variables={AWS_REGION=${{ env.AWS_REGION }},API_KEY=${{ secrets.API_KEY_PROD }},DYNAMODB_TABLE_NAME=Countries}" \
+            --environment "Variables={API_KEY=${{ secrets.API_KEY_PROD }},DYNAMODB_TABLE_NAME=Countries}" \
             --region ${{ env.AWS_REGION }}
       
       - name: Check if smoke tests should run
