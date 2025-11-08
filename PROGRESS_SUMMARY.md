@@ -235,6 +235,65 @@ This document summarizes progress across completed sprints (0-6) and current sta
 
 ---
 
+## Sprint 7: Deployment Workflow (`09-deployment-workflow`)
+**Status:** ✅ Complete
+
+### Achievements
+- **Lambda Deployment Package:**
+  - Gradle Shadow plugin configured to create fat JAR for Lambda
+  - `buildLambdaPackage` task bundles all dependencies
+  - Lambda entry point (`LambdaEntryPoint`) for AWS deployment
+- **GitHub Actions Deployment Workflow:**
+  - `.github/workflows/deploy.yml` for automated deployments
+  - Triggers on tag push (`v*`) for automatic staging deployment
+  - Manual `workflow_dispatch` for production deployments
+  - Builds Lambda package, uploads to S3, deploys via CloudFormation
+- **AWS OIDC Authentication:**
+  - GitHub Actions roles configured for OIDC authentication
+  - No long-lived access keys required
+  - Secure role assumption via `aws-actions/configure-aws-credentials@v4`
+- **CloudFormation Infrastructure:**
+  - `lambda-api-gateway.yaml` template for Lambda + API Gateway
+  - `lambda-execution-roles.yaml` for Lambda execution roles
+  - `github-actions-roles.yaml` for GitHub Actions deployment roles
+  - `dynamodb-table.yaml` for DynamoDB table
+  - Deployment scripts for all infrastructure components
+- **API Gateway Configuration:**
+  - REST API with all OpenAPI endpoints configured
+  - Lambda proxy integration for all routes
+  - API Key and Usage Plan for authentication and throttling
+  - Throttling limits: 50,000 requests/month (hard limit)
+  - Rate limit: 2 requests/second, burst: 5 requests
+- **Smoke Tests:**
+  - Automated smoke tests in deployment workflow
+  - Validates API health and authentication post-deployment
+  - Uses `test-api.sh` script for API validation
+- **Cost Protection:**
+  - API throttling limits monthly costs to ~$0.36/month maximum
+  - Cost estimation documentation added
+  - Infrastructure cost breakdown documented
+- **IAM Permissions:**
+  - Comprehensive permissions for Lambda, API Gateway, CloudFormation, S3
+  - API Gateway permissions for API keys, usage plans, and tagging
+  - CloudFormation permissions for stack management
+- **Documentation:**
+  - `docs/LAMBDA_DEPLOYMENT.md` - Lambda deployment guide
+  - `docs/AWS_OIDC_SETUP.md` - OIDC authentication setup
+  - `docs/API_KEY_SETUP.md` - API key generation and configuration
+  - `docs/LAMBDA_EXECUTION_ROLE_SETUP.md` - Lambda execution role setup
+  - `infrastructure/README.md` - Infrastructure documentation
+  - `infrastructure/COST_ESTIMATION.md` - Cost estimation guide
+  - Updated Release & Deployment Guide with deployment workflow details
+
+### Next Sprint: Deployment Optimization
+- **Evaluate AWS CloudFormation GitHub Action:**
+  - Consider migrating from custom bash script to `aws-actions/aws-cloudformation-github-deploy`
+  - Simplify workflow YAML and reduce maintenance overhead
+  - Verify support for `CAPABILITY_NAMED_IAM` and all parameter overrides
+  - Reference: https://aws.amazon.com/blogs/opensource/deploy-aws-cloudformation-stacks-with-github-actions/
+
+---
+
 ## Current State Summary
 
 ### ✅ Completed Components
@@ -257,6 +316,9 @@ This document summarizes progress across completed sprints (0-6) and current sta
 | Lambda Entry Point | ✅ Complete | `LambdaEntryPoint` for AWS deployment |
 | Lambda Build Task | ✅ Complete | `buildLambdaPackage` Gradle task |
 | Deployment Workflow | ✅ Complete | `.github/workflows/deploy.yml` |
+| CloudFormation Templates | ✅ Complete | Lambda, API Gateway, IAM roles, DynamoDB |
+| API Gateway Throttling | ✅ Complete | 50K requests/month limit configured |
+| Smoke Tests | ✅ Complete | Automated post-deployment validation |
 | Architecture Tests | ✅ Complete | ArchUnit tests in all modules |
 | LocalStack Setup | ✅ Complete | `docker-compose.yml` |
 | CI/CD Pipeline | ✅ Complete | `.github/workflows/ci.yml` |
@@ -264,15 +326,15 @@ This document summarizes progress across completed sprints (0-6) and current sta
 
 ### 🔄 Next Steps (Sprint 8+)
 
-1. **OpenAPI Documentation:**
+1. **Deployment Optimization:**
+   - Evaluate AWS CloudFormation GitHub Action (`aws-actions/aws-cloudformation-github-deploy`)
+   - Migrate from custom bash script to GitHub Action if beneficial
+   - Simplify workflow YAML and reduce maintenance overhead
+
+2. **OpenAPI Documentation:**
    - Framework-integrated OpenAPI/Swagger UI exposure
    - API documentation with examples
    - Contract validation in CI
-
-2. **Smoke Tests:**
-   - Automated smoke tests in deployment workflow
-   - Test API endpoints after deployment
-   - Validate Lambda function health
 
 ---
 
@@ -328,5 +390,5 @@ This document summarizes progress across completed sprints (0-6) and current sta
 6. `06-rest-framework-auth` → Merged (Sprint 4)
 7. `07-data-seeding` → Merged (Sprint 5)
 8. `08-lambda-api-gateway-integration` → Merged (Sprint 6)
-9. `09-deployment-workflow` → Current (Sprint 7, ready to merge)
+9. `09-deployment-workflow` → Merged (Sprint 7)
 

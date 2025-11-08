@@ -47,6 +47,18 @@ This guide defines how we version, build, test, package, and deploy the Country 
 - Steps:
   1. Checkout
   2. Setup JDK 21
+  3. Build Lambda package (Shadow plugin fat JAR)
+  4. Upload Lambda package to S3
+  5. Configure AWS credentials (OIDC authentication)
+  6. Deploy CloudFormation stack (Lambda + API Gateway)
+  7. Run smoke tests to validate deployment
+- **Current Implementation:**
+  - Uses custom bash script (`infrastructure/deploy-stack.sh`) for CloudFormation deployment
+  - Handles parameter overrides, capabilities, and error reporting
+- **Future Enhancement (Sprint 8):**
+  - Evaluate migrating to `aws-actions/aws-cloudformation-github-deploy` GitHub Action
+  - Reference: https://aws.amazon.com/blogs/opensource/deploy-aws-cloudformation-stacks-with-github-actions/
+  - Benefits: Simpler workflow YAML, maintained by AWS, built-in change set handling
   3. Build Lambda package (`gradlew :country-service-adapters:buildLambdaPackage`)
   4. Upload Lambda package artifact
   5. Deploy to `staging` (automatic on tag) or selected environment (manual)
