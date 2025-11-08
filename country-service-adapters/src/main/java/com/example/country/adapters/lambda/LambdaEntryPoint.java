@@ -48,12 +48,14 @@ public class LambdaEntryPoint implements RequestHandler<APIGatewayProxyRequestEv
     /**
      * Creates the full dependency graph for Lambda execution.
      * Reads configuration from environment variables:
-     * - AWS_REGION: AWS region (default: us-east-1)
+     * - AWS_REGION: AWS region (automatically provided by Lambda, or default: us-east-1)
      * - AWS_ENDPOINT_URL: Optional endpoint override (for LocalStack)
      * - API_KEY: API key for authentication
+     * - DYNAMODB_TABLE_NAME: DynamoDB table name (default: Countries)
      */
     private ApiGatewayLambdaHandler createHandler() {
         // Configure DynamoDB Client
+        // AWS_REGION is automatically provided by Lambda runtime, but we can override for LocalStack
         String awsRegion = System.getenv("AWS_REGION");
         String awsEndpointUrl = System.getenv("AWS_ENDPOINT_URL");
         
@@ -65,7 +67,8 @@ public class LambdaEntryPoint implements RequestHandler<APIGatewayProxyRequestEv
         if (awsRegion != null && !awsRegion.isEmpty()) {
             dynamoDbBuilder.region(software.amazon.awssdk.regions.Region.of(awsRegion));
         } else {
-            dynamoDbBuilder.region(Region.US_EAST_1); // Default region
+            // Lambda automatically provides AWS_REGION, but if not available, default to us-east-1
+            dynamoDbBuilder.region(Region.US_EAST_1);
         }
         
         DynamoDbClient dynamoDbClient = dynamoDbBuilder.build();

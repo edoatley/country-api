@@ -21,6 +21,7 @@ permissions:
 env:
   AWS_REGION: us-east-1
   LAMBDA_FUNCTION_NAME: country-service-lambda
+  S3_BUCKET: country-service-lambda-deployments
 
 jobs:
   build:
@@ -81,7 +82,6 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
     environment:
       name: staging
-      # URL can be configured in GitHub Environment settings if needed
     
     steps:
       - uses: actions/checkout@v5
@@ -99,175 +99,87 @@ jobs:
           name: lambda-package
           path: .
       
+      - name: Upload Lambda package to S3
+        id: upload_s3
+        run: |
+          JAR_FILE=$(find . -name "country-service-lambda-*.jar" | head -1)
+          S3_KEY="lambda-packages/$(basename "$JAR_FILE")"
+          echo "Uploading $JAR_FILE to s3://${{ env.S3_BUCKET }}/$S3_KEY"
+          aws s3 cp "$JAR_FILE" "s3://${{ env.S3_BUCKET }}/$S3_KEY" --region ${{ env.AWS_REGION }}
+          echo "s3-key=$S3_KEY" >> $GITHUB_OUTPUT
+          echo "Uploaded to s3://${{ env.S3_BUCKET }}/$S3_KEY"
+      
       - name: Get Lambda execution role ARN
         id: lambda_role
         run: |
-          # Use secret if provided, otherwise get from CloudFormation stack or IAM
+          # Use secret if provided, otherwise get from CloudFormation stack
           if [ -n "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_STAGING }}" ] && [ "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_STAGING }}" != "" ]; then
             ROLE_ARN="${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_STAGING }}"
             echo "Using role ARN from secret: $ROLE_ARN"
           else
-            # Try to get from CloudFormation stack
+            # Get from CloudFormation stack
             STACK_NAME="country-service-lambda-execution-roles"
-            if aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
-              echo "Getting role ARN from CloudFormation stack..."
-              ROLE_ARN=$(aws cloudformation describe-stacks \
-                --stack-name "$STACK_NAME" \
-                --region ${{ env.AWS_REGION }} \
-                --query 'Stacks[0].Outputs[?OutputKey==`LambdaExecutionRoleArnStaging`].OutputValue' \
-                --output text)
-              echo "Got role ARN from CloudFormation: $ROLE_ARN"
-            else
-              # Fallback: try to get from IAM directly
-              ROLE_NAME="country-service-lambda-execution-staging"
-              if aws iam get-role --role-name "$ROLE_NAME" >/dev/null 2>&1; then
-                ROLE_ARN=$(aws iam get-role --role-name "$ROLE_NAME" --query 'Role.Arn' --output text)
-                echo "Got role ARN from IAM: $ROLE_ARN"
-              else
-                echo "❌ Error: Lambda execution role not found"
-                echo "Please deploy the CloudFormation stack or configure LAMBDA_EXECUTION_ROLE_ARN_STAGING secret"
-                echo "See infrastructure/lambda-execution-roles.yaml and infrastructure/deploy-roles.sh"
-                exit 1
-              fi
+            ROLE_ARN=$(aws cloudformation describe-stacks \
+              --stack-name "$STACK_NAME" \
+              --region ${{ env.AWS_REGION }} \
+              --query 'Stacks[0].Outputs[?OutputKey==`LambdaExecutionRoleArnStaging`].OutputValue' \
+              --output text 2>/dev/null || echo "")
+            if [ -z "$ROLE_ARN" ]; then
+              echo "❌ Error: Lambda execution role not found"
+              exit 1
             fi
+            echo "Got role ARN from CloudFormation: $ROLE_ARN"
           fi
           echo "role_arn=$ROLE_ARN" >> $GITHUB_OUTPUT
-          echo "Using Lambda execution role: $ROLE_ARN"
       
-      - name: Deploy Lambda function
+      - name: Deploy stack using CloudFormation
+        id: deploy
         run: |
-          JAR_FILE=$(find . -name "country-service-lambda-*.jar" | head -1)
-          FUNCTION_NAME="${{ env.LAMBDA_FUNCTION_NAME }}-staging"
-          echo "Deploying Lambda function: $FUNCTION_NAME"
-          echo "JAR file: $JAR_FILE"
-          
-          # Check if function exists
-          if aws lambda get-function --function-name "$FUNCTION_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
-            echo "Function exists, updating code..."
-            # Update Lambda function code
-            aws lambda update-function-code \
-              --function-name "$FUNCTION_NAME" \
-              --zip-file "fileb://$JAR_FILE" \
-              --region ${{ env.AWS_REGION }}
-            
-            # Wait for update to complete
-            aws lambda wait function-updated \
-              --function-name "$FUNCTION_NAME" \
-              --region ${{ env.AWS_REGION }}
-          else
-            echo "Function does not exist, creating it..."
-            # Create Lambda function
-            # Use role ARN from step output (or secret if provided)
-            EXECUTION_ROLE="${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_STAGING }}"
-            if [ -z "$EXECUTION_ROLE" ] || [ "$EXECUTION_ROLE" == "" ]; then
-              EXECUTION_ROLE="${{ steps.lambda_role.outputs.role_arn }}"
-            fi
-            echo "Using Lambda execution role: $EXECUTION_ROLE"
-            aws lambda create-function \
-              --function-name "$FUNCTION_NAME" \
-              --runtime java21 \
-              --role "$EXECUTION_ROLE" \
-              --handler com.example.country.adapters.lambda.LambdaEntryPoint::handleRequest \
-              --zip-file "fileb://$JAR_FILE" \
-              --timeout 30 \
-              --memory-size 512 \
-              --architectures x86_64 \
-              --region ${{ env.AWS_REGION }}
-            
-            # Wait for function to be active
-            aws lambda wait function-active \
-              --function-name "$FUNCTION_NAME" \
-              --region ${{ env.AWS_REGION }}
+          cd infrastructure
+          chmod +x deploy-stack.sh
+          export API_KEY="${{ secrets.API_KEY }}"
+          ./deploy-stack.sh staging ${{ env.AWS_REGION }} "" ${{ env.S3_BUCKET }} ${{ steps.upload_s3.outputs.s3-key }}
+      
+      - name: Get API Gateway URL from CloudFormation
+        id: api_gateway
+        run: |
+          STACK_NAME="country-service-staging"
+          API_GATEWAY_URL=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl`].OutputValue' \
+            --output text 2>/dev/null || echo "")
+          if [ -z "$API_GATEWAY_URL" ]; then
+            echo "❌ Error: API Gateway URL not found in CloudFormation stack"
+            exit 1
           fi
+          echo "api-gateway-url=$API_GATEWAY_URL" >> $GITHUB_OUTPUT
+          echo "API Gateway URL: $API_GATEWAY_URL"
       
-      - name: Update Lambda environment variables
-        run: |
-          aws lambda update-function-configuration \
-            --function-name ${{ env.LAMBDA_FUNCTION_NAME }}-staging \
-            --environment "Variables={API_KEY=${{ secrets.API_KEY }},DYNAMODB_TABLE_NAME=Countries}" \
-            --region ${{ env.AWS_REGION }}
-      
-      - name: Check if smoke tests should run
-        id: check_smoke_tests
-        env:
-          API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL_STAGING }}
-        run: |
-          if [ -n "$API_GATEWAY_URL" ] && [ "$API_GATEWAY_URL" != "" ]; then
-            echo "run_smoke_tests=true" >> $GITHUB_OUTPUT
-          else
-            echo "run_smoke_tests=false" >> $GITHUB_OUTPUT
-          fi
-          
       - name: Install jq (for JSON validation)
-        if: steps.check_smoke_tests.outputs.run_smoke_tests == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y jq
-          
+      
       - name: Run smoke tests
-        if: steps.check_smoke_tests.outputs.run_smoke_tests == 'true'
         env:
-          API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL_STAGING }}
+          API_GATEWAY_URL: ${{ steps.api_gateway.outputs.api-gateway-url }}
           API_KEY: ${{ secrets.API_KEY }}
         run: |
           echo "Running smoke tests against staging environment..."
           echo "API Gateway URL: $API_GATEWAY_URL"
           
-          # Wait for Lambda to be ready after configuration update
+          # Wait for Lambda to be ready after deployment
           echo "Waiting for Lambda to be ready..."
           sleep 5
           
-          # Test 1: Health check - GET /api/v1/countries (should return 200 with JSON array)
-          echo "Test 1: GET /api/v1/countries"
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$API_GATEWAY_URL/api/v1/countries" \
-            -H "X-API-KEY: $API_KEY" \
-            -H "Content-Type: application/json" || echo -e "\n000")
-          
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | sed '$d')
-          
-          echo "HTTP Status: $HTTP_CODE"
-          echo "Response body (first 200 chars): ${BODY:0:200}"
-          
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "❌ Smoke test failed: Expected HTTP 200, got $HTTP_CODE"
-            echo "Full response: $BODY"
-            exit 1
-          fi
-          
-          # Validate response is valid JSON array
-          if ! echo "$BODY" | jq -e '. | type == "array"' > /dev/null 2>&1; then
-            echo "❌ Smoke test failed: Response is not a valid JSON array"
-            echo "Response: $BODY"
-            exit 1
-          fi
-          
-          echo "✅ Smoke test 1 passed: GET /api/v1/countries returned valid JSON array"
-          
-          # Test 2: Authentication check - request without API key should return 401
-          echo ""
-          echo "Test 2: Authentication validation (no API key)"
-          AUTH_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$API_GATEWAY_URL/api/v1/countries" \
-            -H "Content-Type: application/json" || echo -e "\n000")
-          
-          AUTH_HTTP_CODE=$(echo "$AUTH_RESPONSE" | tail -n1)
-          
-          if [ "$AUTH_HTTP_CODE" == "401" ]; then
-            echo "✅ Smoke test 2 passed: Authentication is working (401 without API key)"
-          else
-            echo "⚠️  Warning: Expected HTTP 401 for unauthenticated request, got $AUTH_HTTP_CODE"
-            echo "This may indicate authentication is not properly configured"
-          fi
+          # Run smoke tests using the test script
+          cd infrastructure
+          chmod +x test-api.sh
+          ./test-api.sh "$API_GATEWAY_URL" "$API_KEY"
           
           echo ""
           echo "✅ All smoke tests passed successfully!"
-          
-      - name: Smoke tests skipped
-        if: steps.check_smoke_tests.outputs.run_smoke_tests == 'false'
-        run: |
-          echo "⚠️  Smoke tests skipped: API_GATEWAY_URL_STAGING secret not configured"
-          echo "To enable smoke tests, add API_GATEWAY_URL_STAGING secret to your GitHub repository"
-          echo "The secret should contain the full API Gateway URL (e.g., https://abc123.execute-api.us-east-1.amazonaws.com)"
 
   deploy-production:
     needs: build
@@ -275,8 +187,6 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
     environment:
       name: production
-      # URL can be configured in GitHub Environment settings if needed
-      # Require manual approval for production - configured in GitHub repository settings under Environments
     
     steps:
       - uses: actions/checkout@v5
@@ -294,175 +204,84 @@ jobs:
           name: lambda-package
           path: .
       
+      - name: Upload Lambda package to S3
+        id: upload_s3
+        run: |
+          JAR_FILE=$(find . -name "country-service-lambda-*.jar" | head -1)
+          S3_KEY="lambda-packages/$(basename "$JAR_FILE")"
+          echo "Uploading $JAR_FILE to s3://${{ env.S3_BUCKET }}/$S3_KEY"
+          aws s3 cp "$JAR_FILE" "s3://${{ env.S3_BUCKET }}/$S3_KEY" --region ${{ env.AWS_REGION }}
+          echo "s3-key=$S3_KEY" >> $GITHUB_OUTPUT
+          echo "Uploaded to s3://${{ env.S3_BUCKET }}/$S3_KEY"
+      
       - name: Get Lambda execution role ARN
         id: lambda_role
         run: |
-          # Use secret if provided, otherwise get from CloudFormation stack or IAM
+          # Use secret if provided, otherwise get from CloudFormation stack
           if [ -n "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION }}" ] && [ "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION }}" != "" ]; then
             ROLE_ARN="${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION }}"
             echo "Using role ARN from secret: $ROLE_ARN"
           else
-            # Try to get from CloudFormation stack
+            # Get from CloudFormation stack
             STACK_NAME="country-service-lambda-execution-roles"
-            if aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
-              echo "Getting role ARN from CloudFormation stack..."
-              ROLE_ARN=$(aws cloudformation describe-stacks \
-                --stack-name "$STACK_NAME" \
-                --region ${{ env.AWS_REGION }} \
-                --query 'Stacks[0].Outputs[?OutputKey==`LambdaExecutionRoleArnProduction`].OutputValue' \
-                --output text)
-              echo "Got role ARN from CloudFormation: $ROLE_ARN"
-            else
-              # Fallback: try to get from IAM directly
-              ROLE_NAME="country-service-lambda-execution-production"
-              if aws iam get-role --role-name "$ROLE_NAME" >/dev/null 2>&1; then
-                ROLE_ARN=$(aws iam get-role --role-name "$ROLE_NAME" --query 'Role.Arn' --output text)
-                echo "Got role ARN from IAM: $ROLE_ARN"
-              else
-                echo "❌ Error: Lambda execution role not found"
-                echo "Please deploy the CloudFormation stack or configure LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION secret"
-                echo "See infrastructure/lambda-execution-roles.yaml and infrastructure/deploy-roles.sh"
-                exit 1
-              fi
-            fi
-          fi
-          echo "role_arn=$ROLE_ARN" >> $GITHUB_OUTPUT
-          echo "Using Lambda execution role: $ROLE_ARN"
-      
-      - name: Deploy Lambda function
-        run: |
-          JAR_FILE=$(find . -name "country-service-lambda-*.jar" | head -1)
-          FUNCTION_NAME="${{ env.LAMBDA_FUNCTION_NAME }}-production"
-          echo "Deploying Lambda function: $FUNCTION_NAME"
-          echo "JAR file: $JAR_FILE"
-          
-          # Check if function exists
-          if aws lambda get-function --function-name "$FUNCTION_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
-            echo "Function exists, updating code..."
-            # Update Lambda function code
-            aws lambda update-function-code \
-              --function-name "$FUNCTION_NAME" \
-              --zip-file "fileb://$JAR_FILE" \
-              --region ${{ env.AWS_REGION }}
-            
-            # Wait for update to complete
-            aws lambda wait function-updated \
-              --function-name "$FUNCTION_NAME" \
-              --region ${{ env.AWS_REGION }}
-          else
-            echo "Function does not exist, creating it..."
-            # Create Lambda function
-            # Use role ARN from step output
-            EXECUTION_ROLE="${{ steps.lambda_role.outputs.role_arn }}"
-            if [ -z "$EXECUTION_ROLE" ] || [ "$EXECUTION_ROLE" == "" ]; then
-              echo "❌ Error: Lambda execution role ARN not found"
-              echo "Please deploy the CloudFormation stack or configure LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION secret"
+            ROLE_ARN=$(aws cloudformation describe-stacks \
+              --stack-name "$STACK_NAME" \
+              --region ${{ env.AWS_REGION }} \
+              --query 'Stacks[0].Outputs[?OutputKey==`LambdaExecutionRoleArnProduction`].OutputValue' \
+              --output text 2>/dev/null || echo "")
+            if [ -z "$ROLE_ARN" ]; then
+              echo "❌ Error: Lambda execution role not found"
               exit 1
             fi
-            echo "Using Lambda execution role: $EXECUTION_ROLE"
-            aws lambda create-function \
-              --function-name "$FUNCTION_NAME" \
-              --runtime java21 \
-              --role "$EXECUTION_ROLE" \
-              --handler com.example.country.adapters.lambda.LambdaEntryPoint::handleRequest \
-              --zip-file "fileb://$JAR_FILE" \
-              --timeout 30 \
-              --memory-size 512 \
-              --architectures x86_64 \
-              --region ${{ env.AWS_REGION }}
-            
-            # Wait for function to be active
-            aws lambda wait function-active \
-              --function-name "$FUNCTION_NAME" \
-              --region ${{ env.AWS_REGION }}
+            echo "Got role ARN from CloudFormation: $ROLE_ARN"
           fi
+          echo "role_arn=$ROLE_ARN" >> $GITHUB_OUTPUT
       
-      - name: Update Lambda environment variables
+      - name: Deploy stack using CloudFormation
+        id: deploy
         run: |
-          aws lambda update-function-configuration \
-            --function-name ${{ env.LAMBDA_FUNCTION_NAME }}-production \
-            --environment "Variables={API_KEY=${{ secrets.API_KEY_PROD }},DYNAMODB_TABLE_NAME=Countries}" \
-            --region ${{ env.AWS_REGION }}
+          cd infrastructure
+          chmod +x deploy-stack.sh
+          export API_KEY="${{ secrets.API_KEY_PROD }}"
+          ./deploy-stack.sh production ${{ env.AWS_REGION }} "" ${{ env.S3_BUCKET }} ${{ steps.upload_s3.outputs.s3-key }}
       
-      - name: Check if smoke tests should run
-        id: check_smoke_tests
-        env:
-          API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL_PRODUCTION }}
+      - name: Get API Gateway URL from CloudFormation
+        id: api_gateway
         run: |
-          if [ -n "$API_GATEWAY_URL" ] && [ "$API_GATEWAY_URL" != "" ]; then
-            echo "run_smoke_tests=true" >> $GITHUB_OUTPUT
-          else
-            echo "run_smoke_tests=false" >> $GITHUB_OUTPUT
+          STACK_NAME="country-service-production"
+          API_GATEWAY_URL=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl`].OutputValue' \
+            --output text 2>/dev/null || echo "")
+          if [ -z "$API_GATEWAY_URL" ]; then
+            echo "❌ Error: API Gateway URL not found in CloudFormation stack"
+            exit 1
           fi
-          
+          echo "api-gateway-url=$API_GATEWAY_URL" >> $GITHUB_OUTPUT
+          echo "API Gateway URL: $API_GATEWAY_URL"
+      
       - name: Install jq (for JSON validation)
-        if: steps.check_smoke_tests.outputs.run_smoke_tests == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y jq
-          
+      
       - name: Run smoke tests
-        if: steps.check_smoke_tests.outputs.run_smoke_tests == 'true'
         env:
-          API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL_PRODUCTION }}
+          API_GATEWAY_URL: ${{ steps.api_gateway.outputs.api-gateway-url }}
           API_KEY: ${{ secrets.API_KEY_PROD }}
         run: |
           echo "Running smoke tests against production environment..."
           echo "API Gateway URL: $API_GATEWAY_URL"
           
-          # Wait for Lambda to be ready after configuration update
+          # Wait for Lambda to be ready after deployment
           echo "Waiting for Lambda to be ready..."
           sleep 5
           
-          # Test 1: Health check - GET /api/v1/countries (should return 200 with JSON array)
-          echo "Test 1: GET /api/v1/countries"
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$API_GATEWAY_URL/api/v1/countries" \
-            -H "X-API-KEY: $API_KEY" \
-            -H "Content-Type: application/json" || echo -e "\n000")
-          
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | sed '$d')
-          
-          echo "HTTP Status: $HTTP_CODE"
-          echo "Response body (first 200 chars): ${BODY:0:200}"
-          
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "❌ Smoke test failed: Expected HTTP 200, got $HTTP_CODE"
-            echo "Full response: $BODY"
-            exit 1
-          fi
-          
-          # Validate response is valid JSON array
-          if ! echo "$BODY" | jq -e '. | type == "array"' > /dev/null 2>&1; then
-            echo "❌ Smoke test failed: Response is not a valid JSON array"
-            echo "Response: $BODY"
-            exit 1
-          fi
-          
-          echo "✅ Smoke test 1 passed: GET /api/v1/countries returned valid JSON array"
-          
-          # Test 2: Authentication check - request without API key should return 401
-          echo ""
-          echo "Test 2: Authentication validation (no API key)"
-          AUTH_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$API_GATEWAY_URL/api/v1/countries" \
-            -H "Content-Type: application/json" || echo -e "\n000")
-          
-          AUTH_HTTP_CODE=$(echo "$AUTH_RESPONSE" | tail -n1)
-          
-          if [ "$AUTH_HTTP_CODE" == "401" ]; then
-            echo "✅ Smoke test 2 passed: Authentication is working (401 without API key)"
-          else
-            echo "⚠️  Warning: Expected HTTP 401 for unauthenticated request, got $AUTH_HTTP_CODE"
-            echo "This may indicate authentication is not properly configured"
-          fi
+          # Run smoke tests using the test script
+          cd infrastructure
+          chmod +x test-api.sh
+          ./test-api.sh "$API_GATEWAY_URL" "$API_KEY"
           
           echo ""
           echo "✅ All smoke tests passed successfully!"
-          
-      - name: Smoke tests skipped
-        if: steps.check_smoke_tests.outputs.run_smoke_tests == 'false'
-        run: |
-          echo "⚠️  Smoke tests skipped: API_GATEWAY_URL_PRODUCTION secret not configured"
-          echo "To enable smoke tests, add API_GATEWAY_URL_PRODUCTION secret to your GitHub repository"
-          echo "The secret should contain the full API Gateway URL (e.g., https://abc123.execute-api.us-east-1.amazonaws.com)"
-

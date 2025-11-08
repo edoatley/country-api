@@ -1,202 +1,114 @@
-# Infrastructure as Code
+# Infrastructure Deployment
 
-This directory contains CloudFormation templates and deployment scripts for the Country Reference Service infrastructure.
+This directory contains CloudFormation templates and deployment scripts for the Country Reference Service.
 
-## Lambda Execution Roles
+## Prerequisites
 
-### Template: `lambda-execution-roles.yaml`
+1. **AWS CLI** configured with appropriate credentials
+2. **DynamoDB Table** - The table must exist before deploying the Lambda function
+3. **Lambda Execution Roles** - Deploy these first using `deploy-roles.sh`
+4. **S3 Bucket** - For storing Lambda deployment packages (default: `country-service-lambda-deployments`)
 
-CloudFormation template that creates IAM roles for Lambda function execution. These roles provide permissions for:
-- DynamoDB table access (query, get, put, update, scan)
-- CloudWatch Logs (create log groups, streams, and put log events)
+## Deployment Order
 
-### Deployment Script: `deploy-roles.sh`
+1. **Deploy Lambda Execution Roles** (if not already deployed):
+   ```bash
+   cd infrastructure
+   ./deploy-roles.sh [region] [profile]
+   ```
 
-Script to deploy the Lambda execution roles using CloudFormation.
+2. **Deploy DynamoDB Table** (if not already deployed):
+   ```bash
+   cd infrastructure
+   ./deploy-dynamodb.sh [region] [profile]
+   ```
 
-**Usage:**
+3. **Build and Upload Lambda Package**:
+   ```bash
+   # Build the Lambda package
+   ./gradlew :country-service-adapters:buildLambdaPackage
+   
+   # Upload to S3 (replace with your bucket name)
+   aws s3 cp country-service-adapters/build/libs/country-service-lambda-*.jar \
+     s3://country-service-lambda-deployments/lambda-packages/
+   ```
+
+4. **Deploy Lambda + API Gateway Stack**:
+   ```bash
+   cd infrastructure
+   export API_KEY=your-api-key
+   ./deploy-stack.sh staging us-east-1 "" country-service-lambda-deployments lambda-packages/country-service-lambda-0.1.0-SNAPSHOT.jar
+   ```
+
+## Files
+
+- **`lambda-execution-roles.yaml`**: CloudFormation template for Lambda execution IAM roles
+- **`dynamodb-table.yaml`**: CloudFormation template for the DynamoDB table
+- **`lambda-api-gateway.yaml`**: CloudFormation template for Lambda function and API Gateway
+- **`deploy-roles.sh`**: Script to deploy Lambda execution roles
+- **`deploy-dynamodb.sh`**: Script to deploy DynamoDB table
+- **`deploy-stack.sh`**: Script to deploy Lambda + API Gateway stack
+- **`test-api.sh`**: Script to test the API from command line
+
+## Testing the API
+
+After deployment, you can test the API using the `test-api.sh` script:
+
 ```bash
 cd infrastructure
-./deploy-roles.sh
+./test-api.sh https://abc123.execute-api.us-east-1.amazonaws.com/staging your-api-key
 ```
 
-**Prerequisites:**
-- AWS CLI configured with appropriate permissions
-- Permissions to create IAM roles and policies
-
-**What it does:**
-1. Deploys the CloudFormation stack `country-service-lambda-execution-roles`
-2. Creates two IAM roles:
-   - `country-service-lambda-execution-staging`
-   - `country-service-lambda-execution-production`
-3. Outputs the role ARNs for use in GitHub secrets (optional)
-
-**Parameters:**
-- `DynamoDBTableName`: Name of the DynamoDB table (default: `Countries`)
-- `DynamoDBRegion`: AWS region where DynamoDB table is located (default: `us-east-1`)
-
-**Outputs:**
-- `LambdaExecutionRoleArnStaging`: ARN of the staging execution role
-- `LambdaExecutionRoleArnProduction`: ARN of the production execution role
-
-### Manual Deployment
-
-If you prefer to deploy manually:
+Or get the API Gateway URL from CloudFormation:
 
 ```bash
-aws cloudformation deploy \
-  --template-file lambda-execution-roles.yaml \
-  --stack-name country-service-lambda-execution-roles \
-  --parameter-overrides \
-    DynamoDBTableName=Countries \
-    DynamoDBRegion=us-east-1 \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --region us-east-1
-```
-
-### Getting Role ARNs
-
-After deployment, get the role ARNs:
-
-```bash
-# From CloudFormation outputs
 aws cloudformation describe-stacks \
-  --stack-name country-service-lambda-execution-roles \
-  --query 'Stacks[0].Outputs' \
-  --output table
-
-# Or from IAM directly
-aws iam get-role --role-name country-service-lambda-execution-staging --query 'Role.Arn' --output text
-aws iam get-role --role-name country-service-lambda-execution-production --query 'Role.Arn' --output text
+  --stack-name country-service-staging \
+  --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl`].OutputValue' \
+  --output text
 ```
 
-### Updating Roles
+## CloudFormation Stack Outputs
 
-To update the roles (e.g., change permissions):
+The `country-service-{environment}` stack provides the following outputs:
 
-1. Modify `lambda-execution-roles.yaml`
-2. Redeploy:
+- **`LambdaFunctionArn`**: ARN of the Lambda function
+- **`LambdaFunctionName`**: Name of the Lambda function
+- **`ApiGatewayId`**: ID of the API Gateway
+- **`ApiGatewayUrl`**: Base URL of the API Gateway (e.g., `https://abc123.execute-api.us-east-1.amazonaws.com/staging`)
+- **`ApiGatewayRootUrl`**: Root API URL (e.g., `https://abc123.execute-api.us-east-1.amazonaws.com/staging/api/v1`)
+
+## Troubleshooting
+
+### DynamoDB Table Not Found
+
+If you get a "Requested resource not found" error for DynamoDB:
+
+1. Check if the table exists:
    ```bash
-   ./deploy-roles.sh
+   aws dynamodb describe-table --table-name Countries --region us-east-1
    ```
 
-### Deleting the Stack
-
-To remove all roles:
-
-```bash
-aws cloudformation delete-stack \
-  --stack-name country-service-lambda-execution-roles \
-  --region us-east-1
-```
-
-**Note**: This will fail if any Lambda functions are still using these roles. You must first update or delete those Lambda functions.
-
-## Integration with Deployment Workflow
-
-The GitHub Actions deployment workflow will automatically:
-1. Check for `LAMBDA_EXECUTION_ROLE_ARN_*` secrets
-2. If not found, get role ARNs from CloudFormation stack outputs
-3. If CloudFormation stack doesn't exist, try to get from IAM directly
-4. Use the role ARN when creating Lambda functions
-
-**No secrets required** if the CloudFormation stack is deployed - the workflow will discover the roles automatically.
-
-## GitHub Actions Deployment Roles
-
-### Template: `github-actions-roles.yaml`
-
-CloudFormation template that creates IAM roles for GitHub Actions to deploy Lambda functions. These roles provide permissions for:
-- Lambda function creation and updates
-- Passing Lambda execution roles to Lambda (`iam:PassRole`)
-- Reading CloudFormation stack outputs
-- OIDC authentication with GitHub Actions
-
-### Deployment Script: `deploy-github-actions-roles.sh`
-
-Script to deploy the GitHub Actions deployment roles using CloudFormation.
-
-**Usage:**
-```bash
-cd infrastructure
-./deploy-github-actions-roles.sh [region] [profile]
-```
-
-Or with environment variable:
-```bash
-AWS_PROFILE=streaming ./deploy-github-actions-roles.sh
-```
-
-**Prerequisites:**
-- AWS CLI configured with appropriate permissions
-- Permissions to create IAM roles and OIDC providers
-- Lambda execution roles stack must be deployed first (or provide role ARNs as parameters)
-
-**What it does:**
-1. Detects GitHub org/repo from git remote (or prompts for input)
-2. Checks for existing OIDC provider
-3. Gets Lambda execution role ARNs from CloudFormation stack (if available)
-4. Deploys the CloudFormation stack `country-service-github-actions-roles`
-5. Creates two IAM roles:
-   - `GitHubActions-Deploy-Staging` (allows deployments from main branch and v* tags)
-   - `GitHubActions-Deploy-Production` (allows deployments from workflow_dispatch only)
-6. Outputs the role ARNs for use in GitHub secrets
-
-**Parameters:**
-- `GitHubOrg`: GitHub organization or username (auto-detected from git remote)
-- `GitHubRepo`: GitHub repository name (auto-detected from git remote)
-- `OIDCProviderArn`: ARN of existing OIDC provider (optional - will create if not provided)
-- `LambdaExecutionRoleArnStaging`: ARN of Lambda execution role for staging (optional - auto-detected from stack)
-- `LambdaExecutionRoleArnProduction`: ARN of Lambda execution role for production (optional - auto-detected from stack)
-
-**Outputs:**
-- `GitHubActionsRoleArnStaging`: ARN of the staging deployment role
-- `GitHubActionsRoleArnProduction`: ARN of the production deployment role
-- `OIDCProviderArn`: ARN of the OIDC provider (created or existing)
-
-### Manual Deployment
-
-If you prefer to deploy manually:
-
-```bash
-aws cloudformation deploy \
-  --template-file github-actions-roles.yaml \
-  --stack-name country-service-github-actions-roles \
-  --parameter-overrides \
-    GitHubOrg=YOUR_GITHUB_ORG \
-    GitHubRepo=YOUR_REPO \
-    OIDCProviderArn=arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com \
-    LambdaExecutionRoleArnStaging=arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-staging \
-    LambdaExecutionRoleArnProduction=arn:aws:iam::ACCOUNT_ID:role/country-service-lambda-execution-production \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --region us-east-1
-```
-
-### Updating Roles
-
-To update the roles (e.g., change permissions or trust policy):
-
-1. **Modify the CloudFormation template** (`infrastructure/github-actions-roles.yaml`)
-
-2. **Redeploy the stack**:
+2. If it doesn't exist, deploy it:
    ```bash
-   ./deploy-github-actions-roles.sh
+   cd infrastructure
+   ./deploy-dynamodb.sh us-east-1
    ```
 
-### Deleting the Stack
+### API Gateway URL Not Found
 
-To remove all roles:
+The API Gateway URL is output from the CloudFormation stack. If it's not available:
 
-```bash
-aws cloudformation delete-stack \
-  --stack-name country-service-github-actions-roles \
-  --region us-east-1
-```
+1. Check the stack status:
+   ```bash
+   aws cloudformation describe-stacks --stack-name country-service-staging
+   ```
 
-**Note**: This will fail if any GitHub Actions workflows are still using these roles. You must first update or remove those workflows.
+2. Check stack events for errors:
+   ```bash
+   aws cloudformation describe-stack-events --stack-name country-service-staging --max-items 10
+   ```
 
-## See Also
+### Lambda Function Not Found
 
-- [Lambda Execution Role Setup Guide](../docs/LAMBDA_EXECUTION_ROLE_SETUP.md)
-- [AWS OIDC Setup Guide](../docs/AWS_OIDC_SETUP.md)
-
+If the Lambda function doesn't exist, the CloudFormation stack will create it. If it already exists, the stack will update it.
