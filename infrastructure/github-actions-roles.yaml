@@ -113,7 +113,10 @@ Resources:
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
-                token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubOrg}/${GitHubRepo}:workflow:Deploy'
+              StringLike:
+                token.actions.githubusercontent.com:sub:
+                  - !Sub 'repo:${GitHubOrg}/${GitHubRepo}:workflow:Deploy'
+                  - !Sub 'repo:${GitHubOrg}/${GitHubRepo}:workflow:.github/workflows/deploy.yml'
       Policies:
         - PolicyName: LambdaDeploymentPolicy
           PolicyDocument:
