@@ -117,6 +117,51 @@ Resources:
       DeploymentId: !Ref ApiGatewayDeployment
       StageName: !Sub '${Environment}'
       Description: !Sub '${Environment} stage'
+      ThrottleSettings:
+        RateLimit: 2  # Requests per second (50,000/month ≈ 1.16 req/min ≈ 0.02 req/sec, using 2 for safety)
+        BurstLimit: 5  # Burst capacity (allows short spikes)
+
+  # API Key for authentication and throttling
+  ApiGatewayApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    Properties:
+      Name: !Sub 'country-service-api-key-${Environment}'
+      Description: !Sub 'API key for ${Environment} environment'
+      Enabled: true
+      GenerateDistinctId: true
+
+  # Usage Plan with throttling limits (50,000 requests/month)
+  ApiGatewayUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      UsagePlanName: !Sub 'country-service-usage-plan-${Environment}'
+      Description: !Sub 'Usage plan for ${Environment} - 50,000 requests/month limit'
+      ApiStages:
+        - ApiId: !Ref ApiGateway
+          Stage: !Sub '${Environment}'
+      Throttle:
+        # 50,000 requests/month = ~1,667 requests/day = ~69 requests/hour = ~1.16 requests/minute
+        # Using 2 requests/second (5,184,000/month) with quota to limit to 50,000/month
+        RateLimit: 2  # Requests per second
+        BurstLimit: 5  # Burst capacity
+      Quota:
+        Limit: 50000  # Monthly quota limit
+        Period: MONTH
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: country-service
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # Associate API Key with Usage Plan
+  ApiGatewayUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref ApiGatewayApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref ApiGatewayUsagePlan
 
   # Resource: /api/v1/countries
   ApiResourceCountries:
