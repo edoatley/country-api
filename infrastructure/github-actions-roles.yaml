@@ -95,6 +95,10 @@ Resources:
                   - cloudformation:CreateStack
                   - cloudformation:UpdateStack
                   - cloudformation:DeleteStack
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DeleteChangeSet
                   - cloudformation:ValidateTemplate
                 Resource: !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:stack/country-service-*/*'
               - Effect: Allow
@@ -192,6 +196,10 @@ Resources:
                   - cloudformation:CreateStack
                   - cloudformation:UpdateStack
                   - cloudformation:DeleteStack
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DeleteChangeSet
                   - cloudformation:ValidateTemplate
                 Resource: !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:stack/country-service-*/*'
               - Effect: Allow
