@@ -257,6 +257,23 @@ jobs:
           fi
           echo ""
           
+          # Fetch recent Lambda logs for debugging
+          echo "Fetching recent Lambda logs for debugging..."
+          LAMBDA_FUNCTION_NAME=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`LambdaFunctionName`].OutputValue' \
+            --output text 2>/dev/null || echo "")
+          if [ -n "$LAMBDA_FUNCTION_NAME" ] && [ "$LAMBDA_FUNCTION_NAME" != "None" ]; then
+            echo "Lambda function name: $LAMBDA_FUNCTION_NAME"
+            echo "Recent Lambda logs:"
+            aws logs tail "/aws/lambda/$LAMBDA_FUNCTION_NAME" \
+              --region ${{ env.AWS_REGION }} \
+              --since 5m \
+              --format short 2>/dev/null | tail -50 || echo "Could not fetch logs (may need CloudWatch Logs permissions)"
+          fi
+          echo ""
+          
           # Run the API test suite with detailed output
           echo "Running API test suite..."
           ./gradlew :country-service-api-tests:testStaging --no-daemon --info || {

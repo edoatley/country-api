@@ -35,6 +35,21 @@ public class ApiGatewayLambdaHandler implements RequestHandler<APIGatewayProxyRe
         this.objectMapper.registerModule(new JavaTimeModule());
         this.objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         this.objectMapper.addMixIn(Country.class, CountryJacksonMixIn.class);
+        
+        // Verify MixIn is applied (for debugging) - test serialization
+        try {
+            Country testCountry = Country.of("Test", "TT", "TTT", "999", 
+                    java.time.Instant.now(), null, false);
+            String testJson = this.objectMapper.writeValueAsString(testCountry);
+            System.out.println("ObjectMapper initialization test - serialized Country: " + testJson);
+            if (!testJson.contains("\"name\"")) {
+                System.err.println("WARNING: Country serialization missing 'name' field! JSON: " + testJson);
+            }
+        } catch (Exception e) {
+            System.err.println("ERROR: Could not test Country serialization: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
         this.apiKeyValidator = Objects.requireNonNull(apiKeyValidator);
         this.routeMapper = Objects.requireNonNull(routeMapper);
     }
@@ -82,13 +97,38 @@ public class ApiGatewayLambdaHandler implements RequestHandler<APIGatewayProxyRe
                 // Serialize result to JSON
                 // Log the result type for debugging
                 if (context != null) {
-                    context.getLogger().log("Serializing result of type: " + (result != null ? result.getClass().getName() : "null"));
+                    context.getLogger().log("=== Serialization Debug ===");
+                    context.getLogger().log("Result type: " + (result != null ? result.getClass().getName() : "null"));
+                    if (result instanceof java.util.List) {
+                        java.util.List<?> list = (java.util.List<?>) result;
+                        context.getLogger().log("List size: " + list.size());
+                        if (!list.isEmpty()) {
+                            context.getLogger().log("First element type: " + list.get(0).getClass().getName());
+                            context.getLogger().log("First element: " + list.get(0).toString());
+                        }
+                    } else if (result instanceof Country) {
+                        Country country = (Country) result;
+                        context.getLogger().log("Country name: " + country.name());
+                        context.getLogger().log("Country alpha2Code: " + country.alpha2Code());
+                        context.getLogger().log("Country isDeleted: " + country.isDeleted());
+                    }
+                    // Test serialization of a single Country to verify MixIn
+                    try {
+                        Country testCountry = Country.of("Test", "TT", "TTT", "999", 
+                                java.time.Instant.now(), null, false);
+                        String testJson = objectMapper.writeValueAsString(testCountry);
+                        context.getLogger().log("Test Country serialization: " + testJson);
+                        context.getLogger().log("Test JSON contains 'name': " + testJson.contains("\"name\""));
+                    } catch (Exception e) {
+                        context.getLogger().log("Could not test Country serialization: " + e.getMessage());
+                    }
                 }
                 String jsonBody = objectMapper.writeValueAsString(result);
-                // Log first 200 chars of JSON for debugging (truncate if longer)
+                // Log full JSON for debugging (truncate if very long)
                 if (context != null && jsonBody != null) {
-                    String preview = jsonBody.length() > 200 ? jsonBody.substring(0, 200) + "..." : jsonBody;
-                    context.getLogger().log("Serialized JSON preview: " + preview);
+                    String preview = jsonBody.length() > 500 ? jsonBody.substring(0, 500) + "..." : jsonBody;
+                    context.getLogger().log("Serialized JSON: " + preview);
+                    context.getLogger().log("JSON length: " + jsonBody.length());
                 }
                 int statusCode = mapping.getAction().startsWith("CREATE") ? 201 : 200;
                 return createSuccessResponse(statusCode, jsonBody);
