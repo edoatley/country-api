@@ -20,7 +20,7 @@ These tests verify that the deployed API works correctly end-to-end. They can ru
 
 1. **Start LocalStack:**
    ```bash
-   docker-compose up -d
+   docker compose up -d
    # OR with Podman:
    podman compose up -d
    ```

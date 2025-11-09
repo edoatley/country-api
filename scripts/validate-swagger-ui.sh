@@ -14,11 +14,13 @@ API_KEY="default-test-key"
 # Detect container runtime (Docker or Podman)
 if command -v podman &> /dev/null && podman ps &> /dev/null 2>&1; then
     CONTAINER_CMD="podman"
-    # Try podman compose first, fall back to docker-compose if available
+    # Try podman compose first, fall back to docker compose (v2), then docker-compose (v1) if available
     if podman compose version &> /dev/null 2>&1; then
         COMPOSE_CMD="podman compose"
     elif command -v podman-compose &> /dev/null; then
         COMPOSE_CMD="podman-compose"
+    elif docker compose version &> /dev/null 2>&1; then
+        COMPOSE_CMD="docker compose"
     elif command -v docker-compose &> /dev/null; then
         COMPOSE_CMD="docker-compose"
     else
@@ -26,7 +28,14 @@ if command -v podman &> /dev/null && podman ps &> /dev/null 2>&1; then
     fi
 elif command -v docker &> /dev/null && docker ps &> /dev/null 2>&1; then
     CONTAINER_CMD="docker"
-    COMPOSE_CMD="docker-compose"
+    # Prefer docker compose (v2) over docker-compose (v1)
+    if docker compose version &> /dev/null 2>&1; then
+        COMPOSE_CMD="docker compose"
+    elif command -v docker-compose &> /dev/null; then
+        COMPOSE_CMD="docker-compose"
+    else
+        COMPOSE_CMD="docker compose"
+    fi
 else
     echo "⚠️  Neither Docker nor Podman is available. Continuing with API checks only..."
     CONTAINER_CMD=""
@@ -49,7 +58,7 @@ if ! curl -s -f "${BASE_URL}/actuator/health" > /dev/null 2>&1; then
     if [ -n "${COMPOSE_CMD}" ]; then
         echo "   ${COMPOSE_CMD} up -d"
     else
-        echo "   podman-compose up -d  (or docker-compose up -d)"
+        echo "   podman-compose up -d  (or docker compose up -d)"
     fi
     exit 1
 fi

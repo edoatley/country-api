@@ -46,7 +46,7 @@ See [Architecture Decision Records](capabilities/ADRs/README.md) for detailed ar
 
 3. **Start LocalStack** (for local DynamoDB):
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 4. **Set environment variables:**
@@ -121,8 +121,8 @@ All endpoints require the `X-API-KEY` header for authentication.
 The project uses LocalStack for local AWS service emulation:
 
 ```bash
-docker-compose up -d    # Start LocalStack
-docker-compose down     # Stop LocalStack
+docker compose up -d    # Start LocalStack
+docker compose down     # Stop LocalStack
 ```
 
 Integration tests automatically spin up LocalStack containers using Testcontainers.

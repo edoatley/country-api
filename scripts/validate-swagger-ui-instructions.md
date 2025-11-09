@@ -16,7 +16,7 @@ If LocalStack is not already running:
 podman compose up -d
 
 # OR using docker-compose (Podman can use docker-compose)
-docker-compose up -d
+docker compose up -d
 
 # OR manually with podman
 podman run -d \

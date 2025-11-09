@@ -160,7 +160,7 @@ country-api/
 
 2. **Start LocalStack:**
    ```bash
-   docker-compose up -d
+   docker compose up -d
    # OR with Podman:
    podman compose up -d
    ```
@@ -384,12 +384,12 @@ All AWS resources are defined in CloudFormation templates:
 
 #### 1. LocalStack Not Starting
 
-**Problem:** `docker-compose up` fails
+**Problem:** `docker compose up` fails
 
 **Solution:**
 - Check Docker is running: `docker ps`
 - Check port 4566 is available
-- Review LocalStack logs: `docker-compose logs localstack`
+- Review LocalStack logs: `docker compose logs localstack`
 
 #### 2. Integration Tests Failing
 

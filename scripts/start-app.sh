@@ -21,9 +21,11 @@ export API_KEY=default-test-key
 export DATA_SEEDING_ENABLED=true
 
 # Start the application in the background
+# Use nohup and disown to ensure the process persists across steps in CI
 cd "$SCRIPT_DIR"
-./gradlew :country-service-bootstrap:bootRun > "$LOG_FILE" 2>&1 &
+nohup ./gradlew :country-service-bootstrap:bootRun > "$LOG_FILE" 2>&1 &
 APP_PID=$!
+disown $APP_PID
 
 # Save PID to file for later cleanup
 echo "$APP_PID" > /tmp/country-service-app.pid

@@ -7,7 +7,7 @@ set -e
 
 echo "🔧 Stopping LocalStack..."
 
-docker-compose down -v
+docker compose down -v
 
 echo "✅ LocalStack stopped"
 

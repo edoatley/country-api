@@ -23,7 +23,7 @@ Use this checklist to go from clone to running, testing, and deploying locally.
 
 ## Local Development (Sprint 3+)
 1. **Start LocalStack:**
-   - `docker-compose up -d` (or `podman compose up -d` for Podman)
+   - `docker compose up -d` (or `podman compose up -d` for Podman)
 2. **Set up DynamoDB table and seed data:**
    - `./scripts/setup-local-dynamodb.sh` (creates table and seeds 249 countries)
    - OR enable seeding on startup: `export DATA_SEEDING_ENABLED=true`
