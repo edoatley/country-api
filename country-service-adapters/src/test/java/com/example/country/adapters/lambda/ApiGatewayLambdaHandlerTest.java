@@ -114,6 +114,13 @@ class ApiGatewayLambdaHandlerTest {
         // Response should be valid JSON with country data
         assertTrue(response.getBody().length() > 0);
         assertTrue(response.getBody().startsWith("{"));
+        // Verify all required fields are present in the response
+        assertTrue(response.getBody().contains("\"name\""), "Response should contain 'name' field");
+        assertTrue(response.getBody().contains("\"alpha2Code\""), "Response should contain 'alpha2Code' field");
+        assertTrue(response.getBody().contains("\"alpha3Code\""), "Response should contain 'alpha3Code' field");
+        assertTrue(response.getBody().contains("\"numericCode\""), "Response should contain 'numericCode' field");
+        assertTrue(response.getBody().contains("\"createDate\""), "Response should contain 'createDate' field");
+        assertTrue(response.getBody().contains("\"isDeleted\""), "Response should contain 'isDeleted' field");
     }
 
     @Test
@@ -133,6 +140,13 @@ class ApiGatewayLambdaHandlerTest {
         // Response should be valid JSON with country data
         assertTrue(response.getBody().length() > 0);
         assertTrue(response.getBody().startsWith("{"));
+        // Verify all required fields are present in the response
+        assertTrue(response.getBody().contains("\"name\""), "Response should contain 'name' field");
+        assertTrue(response.getBody().contains("\"alpha2Code\""), "Response should contain 'alpha2Code' field");
+        assertTrue(response.getBody().contains("\"alpha3Code\""), "Response should contain 'alpha3Code' field");
+        assertTrue(response.getBody().contains("\"numericCode\""), "Response should contain 'numericCode' field");
+        assertTrue(response.getBody().contains("\"createDate\""), "Response should contain 'createDate' field");
+        assertTrue(response.getBody().contains("\"isDeleted\""), "Response should contain 'isDeleted' field");
     }
 
     @Test
