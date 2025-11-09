@@ -34,16 +34,24 @@ class CountryApiTest extends BaseApiTest {
                 .response();
         
         List<Map<String, Object>> countries = response.jsonPath().getList("");
-        assertNotNull(countries);
+        assertNotNull(countries, "Countries list should not be null");
         assertTrue(countries.size() <= 10, "Should return at most 10 countries");
         
         // Verify country structure
         if (!countries.isEmpty()) {
             Map<String, Object> country = countries.get(0);
-            assertTrue(country.containsKey("name"), "Country should have 'name' field");
-            assertTrue(country.containsKey("alpha2Code"), "Country should have 'alpha2Code' field");
-            assertTrue(country.containsKey("alpha3Code"), "Country should have 'alpha3Code' field");
-            assertTrue(country.containsKey("numericCode"), "Country should have 'numericCode' field");
+            // Log the actual country structure for debugging
+            System.out.println("  First country in list: " + country);
+            assertTrue(country.containsKey("name"), 
+                    "Country should have 'name' field. Actual country: " + country);
+            assertTrue(country.containsKey("alpha2Code"), 
+                    "Country should have 'alpha2Code' field. Actual country: " + country);
+            assertTrue(country.containsKey("alpha3Code"), 
+                    "Country should have 'alpha3Code' field. Actual country: " + country);
+            assertTrue(country.containsKey("numericCode"), 
+                    "Country should have 'numericCode' field. Actual country: " + country);
+        } else {
+            System.out.println("  ⚠️  Warning: Countries list is empty - this may indicate the database is empty");
         }
     }
     
@@ -489,13 +497,21 @@ class CountryApiTest extends BaseApiTest {
                 .response();
         
         List<Map<String, Object>> history = response.jsonPath().getList("");
-        assertTrue(history.size() >= 2, "History should contain at least 2 versions");
+        assertNotNull(history, "History list should not be null");
+        assertTrue(history.size() >= 2, 
+                "History should contain at least 2 versions. Actual history size: " + history.size() + ", History: " + history);
         
         // Verify history is ordered (newest first)
         Map<String, Object> first = history.get(0);
         Map<String, Object> second = history.get(1);
-        assertNotNull(first.get("createDate"));
-        assertNotNull(second.get("createDate"));
+        System.out.println("  First history entry: " + first);
+        System.out.println("  Second history entry: " + second);
+        assertNotNull(first, "First history entry should not be null");
+        assertNotNull(second, "Second history entry should not be null");
+        assertNotNull(first.get("createDate"), 
+                "First history entry should have 'createDate'. Actual entry: " + first);
+        assertNotNull(second.get("createDate"), 
+                "Second history entry should have 'createDate'. Actual entry: " + second);
     }
     
     @Test

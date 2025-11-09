@@ -179,18 +179,25 @@ jobs:
             exit 1
           fi
           # Use ApiGatewayRootUrl which includes /api/v1, or fall back to ApiGatewayUrl
-          API_GATEWAY_URL=$(aws cloudformation describe-stacks \
+          API_GATEWAY_ROOT_URL=$(aws cloudformation describe-stacks \
             --stack-name "$STACK_NAME" \
             --region ${{ env.AWS_REGION }} \
             --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayRootUrl`].OutputValue' \
             --output text 2>/dev/null || echo "")
-          if [ -z "$API_GATEWAY_URL" ]; then
-            # Fall back to ApiGatewayUrl if ApiGatewayRootUrl is not available
-            API_GATEWAY_URL=$(aws cloudformation describe-stacks \
-              --stack-name "$STACK_NAME" \
-              --region ${{ env.AWS_REGION }} \
-              --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl`].OutputValue' \
-              --output text 2>/dev/null || echo "")
+          API_GATEWAY_URL=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl`].OutputValue' \
+            --output text 2>/dev/null || echo "")
+          
+          # Prefer ApiGatewayRootUrl if available, otherwise use ApiGatewayUrl
+          if [ -n "$API_GATEWAY_ROOT_URL" ] && [ "$API_GATEWAY_ROOT_URL" != "None" ]; then
+            API_GATEWAY_URL="$API_GATEWAY_ROOT_URL"
+            echo "Using ApiGatewayRootUrl: $API_GATEWAY_URL"
+          elif [ -n "$API_GATEWAY_URL" ] && [ "$API_GATEWAY_URL" != "None" ]; then
+            echo "Using ApiGatewayUrl: $API_GATEWAY_URL"
+          else
+            API_GATEWAY_URL=""
           fi
           if [ -z "$API_GATEWAY_URL" ]; then
             echo "❌ Error: API Gateway URL not found in stack outputs"
@@ -237,12 +244,16 @@ jobs:
           echo "Waiting for Lambda to be ready..."
           sleep 5
           
-          # Test connectivity first
+          # Test connectivity first and show actual response
           echo "Testing API connectivity..."
-          if curl -s -f -H "X-API-KEY: $API_TEST_API_KEY" "$API_TEST_BASE_URL/countries?limit=1" > /dev/null 2>&1; then
+          CONNECTIVITY_RESPONSE=$(curl -s -f -H "X-API-KEY: $API_TEST_API_KEY" "$API_TEST_BASE_URL/countries?limit=1" 2>&1 || echo "FAILED")
+          if [ "$CONNECTIVITY_RESPONSE" != "FAILED" ]; then
             echo "✅ API is reachable"
+            echo "Sample response: $CONNECTIVITY_RESPONSE" | head -c 200
+            echo ""
           else
             echo "⚠️  API connectivity test failed, but continuing with tests..."
+            echo "Full URL tested: $API_TEST_BASE_URL/countries?limit=1"
           fi
           echo ""
           
