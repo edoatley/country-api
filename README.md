@@ -110,9 +110,11 @@ All endpoints require the `X-API-KEY` header for authentication.
 ### Running Tests
 
 - **Unit tests:** `./gradlew test`
-- **Integration tests:** `./gradlew test` (uses Testcontainers with LocalStack)
+- **Integration tests:** `./gradlew integrationTest` (uses Testcontainers with LocalStack)
 - **Architecture tests:** `./gradlew test` (ArchUnit boundary enforcement)
 - **Code coverage:** `./gradlew test jacocoRootReport` (generates HTML and XML coverage reports)
+- **API tests (deployment):** `./gradlew :country-service-api-tests:testLocal` (requires app running locally)
+  - See [`country-service-api-tests/README.md`](country-service-api-tests/README.md) for details
 
 ### LocalStack Setup
 

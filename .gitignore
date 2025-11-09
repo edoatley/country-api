@@ -39,6 +39,9 @@ build/
 # LocalStack
 .localstack/
 
+# Application PID file
+.app.pid
+
 # IDEA
 .idea/
 

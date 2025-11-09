@@ -45,6 +45,39 @@ jobs:
         
       - name: Run integration tests
         run: ./gradlew integrationTest --no-daemon
+      
+      - name: Install AWS CLI
+        run: |
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+          aws --version
+      
+      - name: Start LocalStack for API tests
+        run: ./scripts/start-localstack.sh
+      
+      - name: Set up DynamoDB table
+        run: ./scripts/create-dynamodb-table.sh
+      
+      - name: Start application in background
+        run: ./scripts/start-app.sh app.log
+      
+      - name: Run API tests against local application
+        env:
+          API_TEST_BASE_URL: http://localhost:8080
+          API_TEST_API_KEY: default-test-key
+        run: |
+          echo "Running API tests against local application..."
+          ./gradlew :country-service-api-tests:test --no-daemon
+          echo "✅ All API tests passed!"
+      
+      - name: Stop application
+        if: always()
+        run: ./scripts/stop-app.sh app.log
+      
+      - name: Stop LocalStack
+        if: always()
+        run: ./scripts/stop-localstack.sh
         
       - name: Generate coverage report
         continue-on-error: true
@@ -56,6 +89,7 @@ jobs:
         with:
           files: |
             **/build/test-results/test/*.xml
+            country-service-api-tests/build/test-results/test/*.xml
           report_individual_runs: true
           check_name: 'Test Results'
           

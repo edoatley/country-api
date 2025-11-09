@@ -1,0 +1,83 @@
+plugins {
+    id 'java'
+}
+
+// This module contains tests that run against deployed applications (local or staging)
+// It has no dependencies on other modules - it's completely isolated
+
+sourceCompatibility = JavaVersion.VERSION_21
+targetCompatibility = JavaVersion.VERSION_21
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // JUnit 5 for testing framework
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
+    testImplementation 'org.junit.platform:junit-platform-launcher:1.12.2'
+    
+    // RestAssured for API testing (framework-agnostic, works with local and staging)
+    testImplementation 'io.rest-assured:rest-assured:5.4.0'
+    testImplementation 'io.rest-assured:json-path:5.4.0'
+    testImplementation 'io.rest-assured:xml-path:5.4.0'
+    
+    // Awaitility for async testing (waiting for eventual consistency)
+    testImplementation 'org.awaitility:awaitility:4.3.0'
+}
+
+test {
+    useJUnitPlatform {
+        // Tag tests with 'api' to distinguish from other test types
+        includeTags 'api'
+    }
+    
+    // These tests run against deployed applications, so they may be slower
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
+    
+    // Configure test environment via system properties or environment variables
+    // - api.test.base.url: Base URL of the API (default: http://localhost:8080)
+    // - api.test.api.key: API key for authentication (default: default-test-key)
+    systemProperty 'api.test.base.url', System.getProperty('api.test.base.url', 
+            System.getenv().getOrDefault('API_TEST_BASE_URL', 'http://localhost:8080'))
+    systemProperty 'api.test.api.key', System.getProperty('api.test.api.key',
+            System.getenv().getOrDefault('API_TEST_API_KEY', 'default-test-key'))
+}
+
+// Task to run tests against local application
+task testLocal(type: Test) {
+    useJUnitPlatform {
+        includeTags 'api'
+    }
+    systemProperty 'api.test.base.url', 'http://localhost:8080'
+    systemProperty 'api.test.api.key', 'default-test-key'
+    description = 'Runs API tests against local application (requires app to be running)'
+    group = 'verification'
+}
+
+// Task to run tests against staging environment
+task testStaging(type: Test) {
+    useJUnitPlatform {
+        includeTags 'api'
+    }
+    // These should be set via environment variables or system properties
+    systemProperty 'api.test.base.url', System.getProperty('api.test.base.url',
+            System.getenv().getOrDefault('API_TEST_BASE_URL', ''))
+    systemProperty 'api.test.api.key', System.getProperty('api.test.api.key',
+            System.getenv().getOrDefault('API_TEST_API_KEY', ''))
+    description = 'Runs API tests against staging environment (requires API_TEST_BASE_URL and API_TEST_API_KEY)'
+    group = 'verification'
+    
+    doFirst {
+        if (!System.getProperty('api.test.base.url') && !System.getenv('API_TEST_BASE_URL')) {
+            throw new GradleException('API_TEST_BASE_URL must be set for staging tests')
+        }
+        if (!System.getProperty('api.test.api.key') && !System.getenv('API_TEST_API_KEY')) {
+            throw new GradleException('API_TEST_API_KEY must be set for staging tests')
+        }
+    }
+}
+
