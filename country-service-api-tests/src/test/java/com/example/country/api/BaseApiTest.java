@@ -53,9 +53,15 @@ public abstract class BaseApiTest {
         // Otherwise, set base path to /api/v1
         if (!baseUrl.contains("/api/v1")) {
             builder.setBasePath("/api/v1");
+            System.out.println("  Base path set to: /api/v1");
+        } else {
+            System.out.println("  Base URL already includes /api/v1, not setting base path");
         }
         
         requestSpec = builder.build();
+        
+        // Enable logging for failed requests to help debug
+        RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
     }
     
     /**

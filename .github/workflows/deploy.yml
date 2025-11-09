@@ -231,16 +231,62 @@ jobs:
         run: |
           echo "Running API tests against staging environment..."
           echo "API Gateway URL: $API_TEST_BASE_URL"
+          echo ""
           
           # Wait for Lambda to be ready after deployment
           echo "Waiting for Lambda to be ready..."
           sleep 5
           
-          # Run the API test suite
-          ./gradlew :country-service-api-tests:testStaging --no-daemon
+          # Test connectivity first
+          echo "Testing API connectivity..."
+          if curl -s -f -H "X-API-KEY: $API_TEST_API_KEY" "$API_TEST_BASE_URL/countries?limit=1" > /dev/null 2>&1; then
+            echo "✅ API is reachable"
+          else
+            echo "⚠️  API connectivity test failed, but continuing with tests..."
+          fi
+          echo ""
+          
+          # Run the API test suite with detailed output
+          echo "Running API test suite..."
+          ./gradlew :country-service-api-tests:testStaging --no-daemon --info || {
+            echo ""
+            echo "❌ API tests failed. Checking test results..."
+            echo ""
+            
+            # Show test results summary
+            if [ -d "country-service-api-tests/build/test-results" ]; then
+              echo "=== Test Results Summary ==="
+              find country-service-api-tests/build/test-results -name "*.xml" -exec grep -l "failure\|error" {} \; | while read file; do
+                echo ""
+                echo "Test file: $file"
+                grep -E "testcase|failure|error" "$file" | head -10
+              done
+              echo ""
+            fi
+            
+            # Show test report location
+            echo "For detailed test reports, check:"
+            echo "  country-service-api-tests/build/reports/tests/testStaging/index.html"
+            echo ""
+            
+            exit 1
+          }
           
           echo ""
           echo "✅ All API tests passed successfully!"
+      
+      - name: Publish Test Report
+        # This step runs even if the previous "Run tests" step failed
+        if: always()
+        uses: mikepenz/action-junit-report@v4
+        with:
+          # A name for the check run that will be created
+          check_name: API Test Report (Staging)
+          # The path to the XML reports (testStaging task outputs to testStaging directory)
+          report_paths: 'country-service-api-tests/build/test-results/testStaging/TEST-*.xml'
+          # Also check for test results in the default test directory (fallback)
+          check_retries: true
+          fail_on_empty: false
 
   deploy-production:
     needs: build
@@ -398,3 +444,16 @@ jobs:
           
           echo ""
           echo "✅ All API tests passed successfully!"
+      
+      - name: Publish Test Report
+        # This step runs even if the previous "Run tests" step failed
+        if: always()
+        uses: mikepenz/action-junit-report@v4
+        with:
+          # A name for the check run that will be created
+          check_name: API Test Report (Production)
+          # The path to the XML reports (testStaging task outputs to testStaging directory)
+          report_paths: 'country-service-api-tests/build/test-results/testStaging/TEST-*.xml'
+          # Also check for test results in the default test directory (fallback)
+          check_retries: true
+          fail_on_empty: false
