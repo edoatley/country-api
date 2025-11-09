@@ -24,9 +24,14 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        // Exclude actuator endpoints from API key authentication
+        // Exclude actuator and Swagger UI endpoints from API key authentication
         String path = request.getRequestURI();
-        if (path != null && path.startsWith("/actuator/")) {
+        if (path != null && (
+                path.startsWith("/actuator/") ||
+                path.startsWith("/swagger-ui") ||
+                path.startsWith("/api-docs") ||
+                path.equals("/swagger-ui.html")
+        )) {
             filterChain.doFilter(request, response);
             return;
         }

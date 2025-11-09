@@ -21,25 +21,35 @@ Use this checklist to go from clone to running, testing, and deploying locally.
 5. **Docs:**
    - Review the `README.md` for project structure, build/run, and links to detailed design docs under `capabilities/`.
 
-## Local Development (Sprint 3)
+## Local Development (Sprint 3+)
 1. **Start LocalStack:**
-   - `docker-compose up -d`
-2. **Set AWS environment variables:**
+   - `docker-compose up -d` (or `podman compose up -d` for Podman)
+2. **Set up DynamoDB table and seed data:**
+   - `./scripts/setup-local-dynamodb.sh` (creates table and seeds 249 countries)
+   - OR enable seeding on startup: `export DATA_SEEDING_ENABLED=true`
+3. **Set AWS environment variables:**
    ```bash
    export AWS_ENDPOINT_URL=http://localhost:4566
    export AWS_ACCESS_KEY_ID=test
    export AWS_SECRET_ACCESS_KEY=test
    export AWS_REGION=us-east-1
+   export API_KEY=default-test-key
    ```
-3. **Run integration tests:**
+4. **Run the application:**
+   - `./gradlew :country-service-bootstrap:bootRun`
+5. **Verify the application:**
+   - API: `http://localhost:8080/api/v1/countries`
+   - Swagger UI: `http://localhost:8080/swagger-ui.html`
+   - Health: `http://localhost:8080/actuator/health`
+6. **Run integration tests:**
    - `./gradlew test` (will automatically spin up Testcontainers LocalStack)
-4. **Verify DynamoDB repository works:**
+   - `./gradlew integrationTest` (explicitly run integration tests)
+7. **Verify DynamoDB repository works:**
    - Tests in `country-service-adapters` validate full persistence layer
 
 ## Next Steps (Future Sprints)
-- Seed DynamoDB via CSV (planned script)
-- Wire up REST/Lambda adapters with actual HTTP framework
-- Complete authentication and error handling per OpenAPI spec
+- Deployment API test suite (tests against deployed API)
+- Performance and security testing
 
 ## Troubleshooting
 - Gradle or Java errors: verify JDK 21 in use (check `java -version`)

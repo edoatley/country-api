@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   localstack:
     image: localstack/localstack:latest
@@ -8,7 +6,7 @@ services:
     environment:
       - SERVICES=dynamodb
       - DEBUG=1
-      - DATA_DIR=/tmp/localstack/data
+      - DATA_DIR=/var/lib/localstack/data
     volumes:
-      - "./.localstack:/tmp/localstack"
+      - "./.localstack:/var/lib/localstack"
 

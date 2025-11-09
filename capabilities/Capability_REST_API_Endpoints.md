@@ -32,8 +32,11 @@ Develop and expose REST API endpoints for all core country operations according 
 - All endpoints protected by `X-API-KEY` header validation (Done)
 - Returns 401 Unauthorized on missing/invalid keys (Done)
 
-### Sprint 5: OpenAPI Docs and Examples
-- Framework-integrated OpenAPI exposure and examples (Planned)
+### Sprint 11: OpenAPI Docs and Examples (Done)
+- ✅ Framework-integrated OpenAPI exposure using SpringDoc OpenAPI
+- ✅ Swagger UI configured at `/swagger-ui.html` with API key authentication
+- ✅ OpenAPI configuration with server URLs and security schemes
+- ✅ Integration samples added for multiple languages and tools
 
 ### Sprint 6: Lambda/API Gateway Integration (Done)
 - AWS Lambda `RequestHandler` implementation (`ApiGatewayLambdaHandler`) (Done)
