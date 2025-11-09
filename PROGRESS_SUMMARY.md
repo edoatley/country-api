@@ -1,7 +1,7 @@
 # Country Reference Service - Progress Summary
 
 ## Overview
-This document summarizes progress across completed sprints (0-6) and current state of the Country Reference Service implementation.
+This document summarizes progress across completed sprints (0-11) and current state of the Country Reference Service implementation.
 
 ---
 
@@ -285,12 +285,69 @@ This document summarizes progress across completed sprints (0-6) and current sta
   - `infrastructure/COST_ESTIMATION.md` - Cost estimation guide
   - Updated Release & Deployment Guide with deployment workflow details
 
-### Next Sprint: Deployment Optimization
-- **Evaluate AWS CloudFormation GitHub Action:**
-  - Consider migrating from custom bash script to `aws-actions/aws-cloudformation-github-deploy`
-  - Simplify workflow YAML and reduce maintenance overhead
-  - Verify support for `CAPABILITY_NAMED_IAM` and all parameter overrides
-  - Reference: https://aws.amazon.com/blogs/opensource/deploy-aws-cloudformation-stacks-with-github-actions/
+---
+
+## Sprint 10: Dependency Updates (`10-dependency-updates`)
+**Status:** ✅ Complete
+
+### Achievements
+- **Dependency Management:**
+  - Updated Spring Boot from 3.2.0 to 3.5.7
+  - Updated AWS SDK BOM from 2.21.0 to 2.28.15
+  - Updated Testcontainers from 1.21.3 to 1.20.4
+  - Updated JUnit from 5.10.2 to 5.12.2
+  - Updated ArchUnit from 1.3.0 to 1.4.1
+  - Updated Mockito to 5.11.0
+  - Leveraged Spring Boot BOM and AWS SDK BOM for dependency management
+  - Removed hardcoded versions where BOMs are available
+- **Integration Test Optimization:**
+  - Tagged integration tests with `@Tag("integration")`
+  - Configured default `test` task to exclude integration tests
+  - Created separate `integrationTest` task for integration tests
+  - Updated CI workflow to run integration tests separately
+- **JUnit Platform Alignment:**
+  - Fixed `OutputDirectoryProvider not available` errors
+  - Explicitly added `junit-platform-launcher` for version alignment
+- **Documentation:**
+  - Updated README with latest dependency versions
+  - All tests passing with updated dependencies
+
+---
+
+## Sprint 11: Documentation & User Guide (`11-documentation-user-guide`)
+**Status:** ✅ Complete
+
+### Achievements
+- **User API Guide:**
+  - Created comprehensive `docs/USER_API_GUIDE.md` with endpoint documentation
+  - Included examples for all endpoints using real data
+  - Documented authentication, error handling, and versioning behavior
+  - Organized into quickstart, reference, and troubleshooting sections
+- **Developer Guide & Architecture Documentation:**
+  - Created `docs/DEVELOPER_GUIDE.md` with architecture overview
+  - Documented hexagonal architecture rationale and module structure
+  - Provided development workflow, testing practices, and troubleshooting
+  - Included instructions for adding new features
+- **OpenAPI/Swagger UI Integration:**
+  - Integrated SpringDoc OpenAPI (2.7.0) with Spring Boot
+  - Configured Swagger UI at `/swagger-ui.html` with API key authentication
+  - Created `OpenApiConfiguration` class with proper server URLs
+  - Fixed API key filter to exclude Swagger UI paths
+  - Fixed server URL duplication issue
+- **Integration Samples:**
+  - Created `docs/INTEGRATION_SAMPLES.md` with code samples
+  - Included examples for curl, HTTPie, Postman, JavaScript, Python, and Java
+  - Provided complete request/response examples
+- **Local Development Scripts:**
+  - Created `scripts/setup-local-dynamodb.sh` for table creation and seeding
+  - Created `scripts/validate-swagger-ui.sh` for Swagger UI validation
+  - Created `scripts/validate-swagger-ui-instructions.md` for validation guide
+  - Updated `docker-compose.yml` for Podman compatibility
+- **Documentation Updates:**
+  - Updated README with Swagger UI links and setup script
+  - Updated Developer Guide with setup instructions
+  - Updated capability documentation with Sprint 11 status
+  - All documentation reflects current implementation
 
 ---
 
@@ -320,21 +377,28 @@ This document summarizes progress across completed sprints (0-6) and current sta
 | API Gateway Throttling | ✅ Complete | 50K requests/month limit configured |
 | Smoke Tests | ✅ Complete | Automated post-deployment validation |
 | Architecture Tests | ✅ Complete | ArchUnit tests in all modules |
-| LocalStack Setup | ✅ Complete | `docker-compose.yml` |
+| LocalStack Setup | ✅ Complete | `docker-compose.yml` (Podman compatible) |
 | CI/CD Pipeline | ✅ Complete | `.github/workflows/ci.yml` |
 | Integration Tests | ✅ Complete | Testcontainers with LocalStack |
+| **Swagger UI** | ✅ Complete | SpringDoc OpenAPI integration |
+| **User API Guide** | ✅ Complete | `docs/USER_API_GUIDE.md` |
+| **Developer Guide** | ✅ Complete | `docs/DEVELOPER_GUIDE.md` |
+| **Integration Samples** | ✅ Complete | `docs/INTEGRATION_SAMPLES.md` |
+| **Local Setup Scripts** | ✅ Complete | `scripts/setup-local-dynamodb.sh` |
 
-### 🔄 Next Steps (Sprint 8+)
+### 🔄 Next Steps (Sprint 12+)
 
-1. **Deployment Optimization:**
+1. **Deployment API Test Suite:**
+   - Create test suite that runs against deployed API
+   - Functional tests for deployed endpoints
+   - Integration tests against production/staging environment
+   - Smoke tests in deployment workflow
+   - Performance and security tests
+
+2. **Deployment Optimization:**
    - Evaluate AWS CloudFormation GitHub Action (`aws-actions/aws-cloudformation-github-deploy`)
    - Migrate from custom bash script to GitHub Action if beneficial
    - Simplify workflow YAML and reduce maintenance overhead
-
-2. **OpenAPI Documentation:**
-   - Framework-integrated OpenAPI/Swagger UI exposure
-   - API documentation with examples
-   - Contract validation in CI
 
 ---
 
@@ -353,10 +417,13 @@ This document summarizes progress across completed sprints (0-6) and current sta
 - ✅ Product Requirements Breakdown (PRD)
 - ✅ Capability Breakdowns (all 6 capabilities documented)
 - ✅ Architecture Decision Records (3 ADRs)
-- ✅ Developer Onboarding Checklist (updated through Sprint 5)
-- ✅ README (completely rewritten with Sprint 4, updated Sprint 5)
+- ✅ Developer Onboarding Checklist (updated through Sprint 11)
+- ✅ README (completely rewritten with Sprint 4, updated through Sprint 11)
 - ✅ Glossary & Conventions
 - ✅ Release & Deployment Guide (GitHub Actions)
+- ✅ User API Guide (`docs/USER_API_GUIDE.md`)
+- ✅ Developer Guide (`docs/DEVELOPER_GUIDE.md`)
+- ✅ Integration Samples (`docs/INTEGRATION_SAMPLES.md`)
 
 **All documentation is up-to-date and reflects current implementation state.**
 
@@ -391,4 +458,6 @@ This document summarizes progress across completed sprints (0-6) and current sta
 7. `07-data-seeding` → Merged (Sprint 5)
 8. `08-lambda-api-gateway-integration` → Merged (Sprint 6)
 9. `09-deployment-workflow` → Merged (Sprint 7)
+10. `10-dependency-updates` → Merged (Sprint 10)
+11. `11-documentation-user-guide` → Ready to merge (Sprint 11)
 

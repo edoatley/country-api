@@ -58,12 +58,17 @@ See [Architecture Decision Records](capabilities/ADRs/README.md) for detailed ar
    export API_KEY=default-test-key
    ```
 
-5. **Seed the database** (optional, but recommended for testing):
+5. **Set up DynamoDB table and seed data** (optional, but recommended for testing):
+   ```bash
+   ./scripts/setup-local-dynamodb.sh
+   ```
+   This will create the DynamoDB table in LocalStack and seed it with 249 countries from `countries_iso3166b.csv`.
+   
+   Alternatively, you can enable seeding on application startup:
    ```bash
    export DATA_SEEDING_ENABLED=true
    ./gradlew :country-service-bootstrap:bootRun
    ```
-   This will populate the database with countries from `countries_iso3166b.csv` on startup.
 
 6. **Run the application:**
    ```bash
@@ -90,7 +95,15 @@ The API follows the [OpenAPI 3.0 specification](openapi.yml). Key endpoints:
 
 All endpoints require the `X-API-KEY` header for authentication.
 
-See [openapi.yml](openapi.yml) for complete API contract and examples.
+**Interactive API Documentation:**
+- **Swagger UI**: Visit `http://localhost:8080/swagger-ui.html` when running locally
+- **OpenAPI JSON**: Available at `http://localhost:8080/api-docs`
+
+**Documentation:**
+- [User API Guide](docs/USER_API_GUIDE.md) – Comprehensive API documentation with examples
+- [Integration Samples](docs/INTEGRATION_SAMPLES.md) – Code samples for various languages and tools
+- [Developer Guide](docs/DEVELOPER_GUIDE.md) – Architecture and development documentation
+- [OpenAPI Specification](openapi.yml) – Complete API contract
 
 ## Local Development
 
