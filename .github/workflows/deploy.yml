@@ -109,6 +109,20 @@ jobs:
           echo "s3-key=$S3_KEY" >> $GITHUB_OUTPUT
           echo "Uploaded to s3://${{ env.S3_BUCKET }}/$S3_KEY"
       
+      - name: Deploy Lambda execution roles (if needed)
+        run: |
+          STACK_NAME="country-service-lambda-execution-roles"
+          if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+            echo "Lambda execution roles stack not found. Deploying it..."
+            cd infrastructure
+            chmod +x deploy-roles.sh
+            ./deploy-roles.sh all ${{ env.AWS_REGION }} ""
+            cd ..
+            echo "✅ Lambda execution roles stack deployed"
+          else
+            echo "✅ Lambda execution roles stack already exists"
+          fi
+      
       - name: Get Lambda execution role ARN
         id: lambda_role
         run: |
@@ -119,13 +133,27 @@ jobs:
           else
             # Get from CloudFormation stack
             STACK_NAME="country-service-lambda-execution-roles"
+            echo "Checking for CloudFormation stack: $STACK_NAME"
+            if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+              echo "❌ Error: CloudFormation stack '$STACK_NAME' not found"
+              echo "Please deploy the execution roles stack first:"
+              echo "  cd infrastructure"
+              echo "  ./deploy-roles.sh"
+              exit 1
+            fi
             ROLE_ARN=$(aws cloudformation describe-stacks \
               --stack-name "$STACK_NAME" \
               --region ${{ env.AWS_REGION }} \
               --query 'Stacks[0].Outputs[?OutputKey==`LambdaExecutionRoleArnStaging`].OutputValue' \
               --output text 2>/dev/null || echo "")
             if [ -z "$ROLE_ARN" ]; then
-              echo "❌ Error: Lambda execution role not found"
+              echo "❌ Error: Lambda execution role ARN not found in stack outputs"
+              echo "Stack outputs:"
+              aws cloudformation describe-stacks \
+                --stack-name "$STACK_NAME" \
+                --region ${{ env.AWS_REGION }} \
+                --query 'Stacks[0].Outputs' \
+                --output table || true
               exit 1
             fi
             echo "Got role ARN from CloudFormation: $ROLE_ARN"
@@ -144,13 +172,34 @@ jobs:
         id: api_gateway
         run: |
           STACK_NAME="country-service-staging"
+          echo "Checking for CloudFormation stack: $STACK_NAME"
+          if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+            echo "❌ Error: CloudFormation stack '$STACK_NAME' not found"
+            echo "The deployment step should have created this stack. Check deployment logs above."
+            exit 1
+          fi
+          # Use ApiGatewayRootUrl which includes /api/v1, or fall back to ApiGatewayUrl
           API_GATEWAY_URL=$(aws cloudformation describe-stacks \
             --stack-name "$STACK_NAME" \
             --region ${{ env.AWS_REGION }} \
-            --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl`].OutputValue' \
+            --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayRootUrl`].OutputValue' \
             --output text 2>/dev/null || echo "")
           if [ -z "$API_GATEWAY_URL" ]; then
-            echo "❌ Error: API Gateway URL not found in CloudFormation stack"
+            # Fall back to ApiGatewayUrl if ApiGatewayRootUrl is not available
+            API_GATEWAY_URL=$(aws cloudformation describe-stacks \
+              --stack-name "$STACK_NAME" \
+              --region ${{ env.AWS_REGION }} \
+              --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl`].OutputValue' \
+              --output text 2>/dev/null || echo "")
+          fi
+          if [ -z "$API_GATEWAY_URL" ]; then
+            echo "❌ Error: API Gateway URL not found in stack outputs"
+            echo "Stack outputs:"
+            aws cloudformation describe-stacks \
+              --stack-name "$STACK_NAME" \
+              --region ${{ env.AWS_REGION }} \
+              --query 'Stacks[0].Outputs' \
+              --output table || true
             exit 1
           fi
           echo "api-gateway-url=$API_GATEWAY_URL" >> $GITHUB_OUTPUT
@@ -226,6 +275,20 @@ jobs:
           echo "s3-key=$S3_KEY" >> $GITHUB_OUTPUT
           echo "Uploaded to s3://${{ env.S3_BUCKET }}/$S3_KEY"
       
+      - name: Deploy Lambda execution roles (if needed)
+        run: |
+          STACK_NAME="country-service-lambda-execution-roles"
+          if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+            echo "Lambda execution roles stack not found. Deploying it..."
+            cd infrastructure
+            chmod +x deploy-roles.sh
+            ./deploy-roles.sh all ${{ env.AWS_REGION }} ""
+            cd ..
+            echo "✅ Lambda execution roles stack deployed"
+          else
+            echo "✅ Lambda execution roles stack already exists"
+          fi
+      
       - name: Get Lambda execution role ARN
         id: lambda_role
         run: |
@@ -236,13 +299,27 @@ jobs:
           else
             # Get from CloudFormation stack
             STACK_NAME="country-service-lambda-execution-roles"
+            echo "Checking for CloudFormation stack: $STACK_NAME"
+            if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+              echo "❌ Error: CloudFormation stack '$STACK_NAME' not found"
+              echo "Please deploy the execution roles stack first:"
+              echo "  cd infrastructure"
+              echo "  ./deploy-roles.sh"
+              exit 1
+            fi
             ROLE_ARN=$(aws cloudformation describe-stacks \
               --stack-name "$STACK_NAME" \
               --region ${{ env.AWS_REGION }} \
               --query 'Stacks[0].Outputs[?OutputKey==`LambdaExecutionRoleArnProduction`].OutputValue' \
               --output text 2>/dev/null || echo "")
             if [ -z "$ROLE_ARN" ]; then
-              echo "❌ Error: Lambda execution role not found"
+              echo "❌ Error: Lambda execution role ARN not found in stack outputs"
+              echo "Stack outputs:"
+              aws cloudformation describe-stacks \
+                --stack-name "$STACK_NAME" \
+                --region ${{ env.AWS_REGION }} \
+                --query 'Stacks[0].Outputs' \
+                --output table || true
               exit 1
             fi
             echo "Got role ARN from CloudFormation: $ROLE_ARN"
@@ -261,13 +338,25 @@ jobs:
         id: api_gateway
         run: |
           STACK_NAME="country-service-production"
+          echo "Checking for CloudFormation stack: $STACK_NAME"
+          if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+            echo "❌ Error: CloudFormation stack '$STACK_NAME' not found"
+            echo "The deployment step should have created this stack. Check deployment logs above."
+            exit 1
+          fi
           API_GATEWAY_URL=$(aws cloudformation describe-stacks \
             --stack-name "$STACK_NAME" \
             --region ${{ env.AWS_REGION }} \
             --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl`].OutputValue' \
             --output text 2>/dev/null || echo "")
           if [ -z "$API_GATEWAY_URL" ]; then
-            echo "❌ Error: API Gateway URL not found in CloudFormation stack"
+            echo "❌ Error: API Gateway URL not found in stack outputs"
+            echo "Stack outputs:"
+            aws cloudformation describe-stacks \
+              --stack-name "$STACK_NAME" \
+              --region ${{ env.AWS_REGION }} \
+              --query 'Stacks[0].Outputs' \
+              --output table || true
             exit 1
           fi
           echo "api-gateway-url=$API_GATEWAY_URL" >> $GITHUB_OUTPUT

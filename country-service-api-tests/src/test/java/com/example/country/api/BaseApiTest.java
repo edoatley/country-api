@@ -43,12 +43,19 @@ public abstract class BaseApiTest {
     @BeforeEach
     void setUpRequestSpec() {
         // Create request specification with common headers
-        requestSpec = new RequestSpecBuilder()
+        RequestSpecBuilder builder = new RequestSpecBuilder()
                 .setBaseUri(baseUrl)
                 .addHeader("X-API-KEY", apiKey)
                 .setContentType(ContentType.JSON)
-                .setAccept(ContentType.JSON)
-                .build();
+                .setAccept(ContentType.JSON);
+        
+        // If base URL already includes /api/v1, don't add it again
+        // Otherwise, set base path to /api/v1
+        if (!baseUrl.contains("/api/v1")) {
+            builder.setBasePath("/api/v1");
+        }
+        
+        requestSpec = builder.build();
     }
     
     /**
