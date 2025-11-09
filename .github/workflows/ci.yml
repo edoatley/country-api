@@ -68,7 +68,7 @@ jobs:
           API_TEST_API_KEY: default-test-key
         run: |
           echo "Running API tests against local application..."
-          ./gradlew :country-service-api-tests:test --no-daemon
+          ./gradlew :country-service-api-tests:testLocal --no-daemon
           echo "✅ All API tests passed!"
       
       - name: Stop application

@@ -45,6 +45,10 @@ test {
             System.getenv().getOrDefault('API_TEST_BASE_URL', 'http://localhost:8080'))
     systemProperty 'api.test.api.key', System.getProperty('api.test.api.key',
             System.getenv().getOrDefault('API_TEST_API_KEY', 'default-test-key'))
+    
+    // Skip API tests by default during build (they require the app to be running)
+    // They should be run explicitly via testLocal or testStaging tasks, or in CI
+    enabled = false
 }
 
 // Task to run tests against local application
