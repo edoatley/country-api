@@ -5,7 +5,9 @@ import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.example.country.application.model.CountryInput;
+import com.example.country.domain.Country;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.util.HashMap;
@@ -28,7 +30,11 @@ public class ApiGatewayLambdaHandler implements RequestHandler<APIGatewayProxyRe
     
     public ApiGatewayLambdaHandler(CountryLambdaHandler handler, ApiKeyValidator apiKeyValidator, RouteMapper routeMapper) {
         this.handler = Objects.requireNonNull(handler);
-        this.objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+        // Configure ObjectMapper with JavaTimeModule and Country MixIn for proper serialization
+        this.objectMapper = new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+                .addMixIn(Country.class, CountryJacksonMixIn.class);
         this.apiKeyValidator = Objects.requireNonNull(apiKeyValidator);
         this.routeMapper = Objects.requireNonNull(routeMapper);
     }
