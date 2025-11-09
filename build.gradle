@@ -22,14 +22,41 @@ subprojects {
         mavenCentral()
     }
     dependencies {
-        testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
-        testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
-        testImplementation 'org.mockito:mockito-core:5.11.0'
-        testImplementation 'org.mockito:mockito-junit-jupiter:5.11.0'
+        // For modules without Spring Boot BOM, we need explicit versions
+        // Spring Boot 3.5.7 uses JUnit 5.12.2, so we use that for consistency
+        // Modules with Spring Boot BOM will use JUnit from the BOM instead
+        if (!project.name.contains('bootstrap') && !project.name.contains('adapters') && !project.name.contains('application')) {
+            // Only apply to domain module (modules without Spring Boot BOM)
+            testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
+            testImplementation 'org.junit.platform:junit-platform-launcher:1.12.2' // Explicit for version alignment
+            testImplementation 'org.mockito:mockito-core:5.11.0'
+            testImplementation 'org.mockito:mockito-junit-jupiter:5.11.0'
+        }
+        // ArchUnit for all modules (not managed by Spring Boot BOM)
+        testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.1'
     }
     test {
-        useJUnitPlatform()
+        useJUnitPlatform {
+            // Exclude integration tests by default (they're slow)
+            excludeTags 'integration'
+        }
         finalizedBy jacocoTestReport
+    }
+    
+    // Task to run integration tests (only for modules that have them)
+    task integrationTest(type: Test) {
+        useJUnitPlatform {
+            includeTags 'integration'
+        }
+        group = 'verification'
+        description = 'Runs integration tests (slow, requires Docker)'
+        // Only run if there are tests with the integration tag
+        onlyIf { 
+            def testClasses = sourceSets.test.output.classesDirs.files.collectMany { 
+                fileTree(it).include('**/*.class').files 
+            }
+            testClasses.any { it.name.contains('IntegrationTest') }
+        }
     }
     jacocoTestReport {
         dependsOn test

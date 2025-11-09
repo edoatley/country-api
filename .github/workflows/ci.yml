@@ -40,8 +40,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
             
-      - name: Build with Gradle
+      - name: Build with Gradle (excluding integration tests)
         run: ./gradlew clean build --no-daemon
+        
+      - name: Run integration tests
+        run: ./gradlew integrationTest --no-daemon
         
       - name: Generate coverage report
         continue-on-error: true
