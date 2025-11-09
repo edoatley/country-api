@@ -10,6 +10,7 @@ import com.example.country.application.CountryServiceImpl;
 import com.example.country.application.ports.CountryRepositoryPort;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -39,6 +40,7 @@ import static org.mockito.Mockito.when;
  * Tests the full stack: Lambda Handler → CountryApi → CountryService → DynamoDB Repository.
  */
 @Testcontainers
+@Tag("integration")
 class ApiGatewayLambdaHandlerIntegrationTest {
 
     @Container
