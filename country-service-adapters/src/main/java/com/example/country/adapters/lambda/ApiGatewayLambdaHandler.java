@@ -80,7 +80,16 @@ public class ApiGatewayLambdaHandler implements RequestHandler<APIGatewayProxyRe
                 return createSuccessResponse(204, null);
             } else {
                 // Serialize result to JSON
+                // Log the result type for debugging
+                if (context != null) {
+                    context.getLogger().log("Serializing result of type: " + (result != null ? result.getClass().getName() : "null"));
+                }
                 String jsonBody = objectMapper.writeValueAsString(result);
+                // Log first 200 chars of JSON for debugging (truncate if longer)
+                if (context != null && jsonBody != null) {
+                    String preview = jsonBody.length() > 200 ? jsonBody.substring(0, 200) + "..." : jsonBody;
+                    context.getLogger().log("Serialized JSON preview: " + preview);
+                }
                 int statusCode = mapping.getAction().startsWith("CREATE") ? 201 : 200;
                 return createSuccessResponse(statusCode, jsonBody);
             }
