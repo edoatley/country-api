@@ -99,15 +99,32 @@ jobs:
           name: lambda-package
           path: .
       
+      - name: Extract version from tag
+        id: version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+      
       - name: Upload Lambda package to S3
         id: upload_s3
         run: |
           JAR_FILE=$(find . -name "country-service-lambda-*.jar" | head -1)
-          S3_KEY="lambda-packages/$(basename "$JAR_FILE")"
+          # Extract version from tag if available, otherwise use timestamp
+          if [ -n "${{ steps.version.outputs.version }}" ]; then
+            VERSION="${{ steps.version.outputs.version }}"
+          else
+            # Fallback to timestamp for non-tag deployments
+            VERSION="$(date +%Y%m%d%H%M%S)"
+          fi
+          # Include version in S3 key to ensure CloudFormation detects changes
+          S3_KEY="lambda-packages/country-service-lambda-${VERSION}.jar"
           echo "Uploading $JAR_FILE to s3://${{ env.S3_BUCKET }}/$S3_KEY"
           aws s3 cp "$JAR_FILE" "s3://${{ env.S3_BUCKET }}/$S3_KEY" --region ${{ env.AWS_REGION }}
           echo "s3-key=$S3_KEY" >> $GITHUB_OUTPUT
           echo "Uploaded to s3://${{ env.S3_BUCKET }}/$S3_KEY"
+          echo "S3 key includes version: $VERSION"
       
       - name: Deploy Lambda execution roles (if needed)
         run: |
@@ -339,15 +356,32 @@ jobs:
           name: lambda-package
           path: .
       
+      - name: Extract version from tag
+        id: version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+      
       - name: Upload Lambda package to S3
         id: upload_s3
         run: |
           JAR_FILE=$(find . -name "country-service-lambda-*.jar" | head -1)
-          S3_KEY="lambda-packages/$(basename "$JAR_FILE")"
+          # Extract version from tag if available, otherwise use timestamp
+          if [ -n "${{ steps.version.outputs.version }}" ]; then
+            VERSION="${{ steps.version.outputs.version }}"
+          else
+            # Fallback to timestamp for non-tag deployments
+            VERSION="$(date +%Y%m%d%H%M%S)"
+          fi
+          # Include version in S3 key to ensure CloudFormation detects changes
+          S3_KEY="lambda-packages/country-service-lambda-${VERSION}.jar"
           echo "Uploading $JAR_FILE to s3://${{ env.S3_BUCKET }}/$S3_KEY"
           aws s3 cp "$JAR_FILE" "s3://${{ env.S3_BUCKET }}/$S3_KEY" --region ${{ env.AWS_REGION }}
           echo "s3-key=$S3_KEY" >> $GITHUB_OUTPUT
           echo "Uploaded to s3://${{ env.S3_BUCKET }}/$S3_KEY"
+          echo "S3 key includes version: $VERSION"
       
       - name: Deploy Lambda execution roles (if needed)
         run: |
