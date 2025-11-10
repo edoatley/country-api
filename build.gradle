@@ -30,8 +30,8 @@ subprojects {
             // Only apply to domain module (modules without Spring Boot BOM)
             testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
             testImplementation 'org.junit.platform:junit-platform-launcher:1.12.2' // Explicit for version alignment
-            testImplementation 'org.mockito:mockito-core:5.11.0'
-            testImplementation 'org.mockito:mockito-junit-jupiter:5.11.0'
+            testImplementation 'org.mockito:mockito-core:5.20.0'
+            testImplementation 'org.mockito:mockito-junit-jupiter:5.20.0'
         }
         // ArchUnit for all modules (not managed by Spring Boot BOM)
         testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.1'
