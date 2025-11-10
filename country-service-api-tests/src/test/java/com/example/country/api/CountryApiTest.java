@@ -126,9 +126,39 @@ class CountryApiTest extends BaseApiTest {
     @Test
     @DisplayName("GET /api/v1/countries/code/{alpha2Code} - Returns 404 for non-existent country")
     void testGetCountryByAlpha2CodeNotFound() {
+        // Generate a unique alpha2Code that's guaranteed not to exist
+        // Use a timestamp-based approach to ensure uniqueness
+        long timestamp = System.currentTimeMillis();
+        // Generate a code that's very unlikely to exist: use timestamp modulo to create unique chars
+        char[] alpha2Chars = {
+            (char)('A' + ((timestamp * 7) % 26)),
+            (char)('A' + ((timestamp * 11) % 26))
+        };
+        String nonExistentCode = new String(alpha2Chars);
+        
+        // Verify the code doesn't exist by checking if we get 404
+        // If we get 200, try a different code (very unlikely but handle it)
+        Response checkResponse = given()
+                .spec(requestSpec)
+                .pathParam("alpha2Code", nonExistentCode)
+                .when()
+                .get("/countries/code/{alpha2Code}")
+                .then()
+                .extract()
+                .response();
+        
+        // If the code exists (200), try with a different combination
+        if (checkResponse.getStatusCode() == 200) {
+            // Use a different calculation to get a different code
+            alpha2Chars[0] = (char)('A' + ((timestamp * 13) % 26));
+            alpha2Chars[1] = (char)('A' + ((timestamp * 17) % 26));
+            nonExistentCode = new String(alpha2Chars);
+        }
+        
+        // Now test that the non-existent code returns 404
         given()
                 .spec(requestSpec)
-                .pathParam("alpha2Code", "XX")
+                .pathParam("alpha2Code", nonExistentCode)
                 .when()
                 .get("/countries/code/{alpha2Code}")
                 .then()
