@@ -13,7 +13,15 @@ echo "🔧 Starting application in background..."
 echo "   Log file: $LOG_FILE"
 
 # Set environment variables
-export AWS_ENDPOINT_URL=http://localhost:4566
+# Try to use localstack profile if it exists, otherwise use endpoint URL
+if aws configure list-profiles 2>/dev/null | grep -q "^localstack$"; then
+    export AWS_PROFILE=localstack
+    unset AWS_ENDPOINT_URL
+else
+    # Fallback to endpoint URL if profile doesn't exist (e.g., in CI/CD)
+    export AWS_ENDPOINT_URL=http://localhost:4566
+    unset AWS_PROFILE
+fi
 export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
 export AWS_REGION=us-east-1

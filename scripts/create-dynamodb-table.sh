@@ -15,14 +15,28 @@ if ! curl -s http://localhost:4566/_localstack/health > /dev/null 2>&1; then
 fi
 
 # Set AWS environment variables for LocalStack
-export AWS_ENDPOINT_URL=http://localhost:4566
+# Try to use localstack profile if it exists, otherwise use endpoint URL
+if aws configure list-profiles 2>/dev/null | grep -q "^localstack$"; then
+    export AWS_PROFILE=localstack
+    unset AWS_ENDPOINT_URL
+else
+    # Fallback to endpoint URL if profile doesn't exist (e.g., in CI/CD)
+    export AWS_ENDPOINT_URL=http://localhost:4566
+    unset AWS_PROFILE
+fi
 export AWS_REGION=us-east-1
 export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
 
 # Create table using AWS CLI
+# Add endpoint-url if using endpoint URL (not profile)
+ENDPOINT_ARG=""
+if [ -n "$AWS_ENDPOINT_URL" ]; then
+    ENDPOINT_ARG="--endpoint-url $AWS_ENDPOINT_URL"
+fi
+
 aws dynamodb create-table \
-    --endpoint-url $AWS_ENDPOINT_URL \
+    $ENDPOINT_ARG \
     --table-name Countries \
     --attribute-definitions \
         AttributeName=alpha2Code,AttributeType=S \
@@ -62,7 +76,6 @@ aws dynamodb create-table \
 echo "⏳ Waiting for table to be active..."
 for i in {1..30}; do
     STATUS=$(aws dynamodb describe-table \
-        --endpoint-url $AWS_ENDPOINT_URL \
         --table-name Countries \
         --query 'Table.TableStatus' \
         --output text 2>/dev/null || echo "CREATING")
