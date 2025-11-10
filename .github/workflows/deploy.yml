@@ -70,7 +70,7 @@ jobs:
           ls -lh "$JAR_PATH"
       
       - name: Upload Lambda package
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v5
         with:
           name: lambda-package
           path: ${{ steps.build.outputs.lambda-jar-path }}
@@ -94,7 +94,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       
       - name: Download Lambda package
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v5
         with:
           name: lambda-package
           path: .
@@ -351,7 +351,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       
       - name: Download Lambda package
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v5
         with:
           name: lambda-package
           path: .
