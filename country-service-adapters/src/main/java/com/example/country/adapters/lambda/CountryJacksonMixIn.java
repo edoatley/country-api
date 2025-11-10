@@ -1,33 +1,35 @@
 package com.example.country.adapters.lambda;
 
 import com.example.country.domain.Country;
-import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * Jackson MixIn to properly serialize Country class accessor methods.
  * This allows Jackson to serialize Country without adding annotations to the domain class.
  * Used by the Lambda handler's ObjectMapper.
+ * 
+ * Using @JsonProperty instead of @JsonGetter to ensure proper serialization.
  */
 public abstract class CountryJacksonMixIn {
-    @JsonGetter("name")
+    @JsonProperty("name")
     abstract String name();
     
-    @JsonGetter("alpha2Code")
+    @JsonProperty("alpha2Code")
     abstract String alpha2Code();
     
-    @JsonGetter("alpha3Code")
+    @JsonProperty("alpha3Code")
     abstract String alpha3Code();
     
-    @JsonGetter("numericCode")
+    @JsonProperty("numericCode")
     abstract String numericCode();
     
-    @JsonGetter("createDate")
+    @JsonProperty("createDate")
     abstract java.time.Instant createDate();
     
-    @JsonGetter("expiryDate")
+    @JsonProperty("expiryDate")
     abstract java.time.Instant expiryDate();
     
-    @JsonGetter("isDeleted")
+    @JsonProperty("isDeleted")
     abstract boolean isDeleted();
 }
 
