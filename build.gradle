@@ -25,6 +25,7 @@ subprojects {
         // For modules without Spring Boot BOM, we need explicit versions
         // Spring Boot 3.5.7 uses JUnit 5.12.2, so we use that for consistency
         // Modules with Spring Boot BOM will use JUnit from the BOM instead
+        // TODO: Upgrade to JUnit 6.0.0 - requires Gradle 9.0+ and build script updates
         if (!project.name.contains('bootstrap') && !project.name.contains('adapters') && !project.name.contains('application')) {
             // Only apply to domain module (modules without Spring Boot BOM)
             testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
