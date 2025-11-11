@@ -37,10 +37,12 @@ fi
 # Include version in S3 key to ensure CloudFormation detects changes
 S3_KEY="lambda-packages/country-service-lambda-${VERSION}.jar"
 
-echo "Uploading $JAR_FILE to s3://$S3_BUCKET/$S3_KEY"
-aws s3 cp "$JAR_FILE" "s3://$S3_BUCKET/$S3_KEY" --region "$REGION"
+echo "Uploading $JAR_FILE to s3://$S3_BUCKET/$S3_KEY" >&2
+# Redirect AWS CLI output to stderr so only the S3 key goes to stdout
+aws s3 cp "$JAR_FILE" "s3://$S3_BUCKET/$S3_KEY" --region "$REGION" >&2
 
-echo "Uploaded to s3://$S3_BUCKET/$S3_KEY"
-echo "S3 key includes version: $VERSION"
+echo "Uploaded to s3://$S3_BUCKET/$S3_KEY" >&2
+echo "S3 key includes version: $VERSION" >&2
+# Output only the S3 key to stdout (for capturing in workflow)
 echo "$S3_KEY"
 
