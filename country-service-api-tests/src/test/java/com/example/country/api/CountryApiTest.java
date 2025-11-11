@@ -126,33 +126,82 @@ class CountryApiTest extends BaseApiTest {
     @Test
     @DisplayName("GET /api/v1/countries/code/{alpha2Code} - Returns 404 for non-existent country")
     void testGetCountryByAlpha2CodeNotFound() {
-        // Generate a unique alpha2Code that's guaranteed not to exist
-        // Use a timestamp-based approach to ensure uniqueness
-        long timestamp = System.currentTimeMillis();
-        // Generate a code that's very unlikely to exist: use timestamp modulo to create unique chars
-        char[] alpha2Chars = {
-            (char)('A' + ((timestamp * 7) % 26)),
-            (char)('A' + ((timestamp * 11) % 26))
-        };
-        String nonExistentCode = new String(alpha2Chars);
-        
-        // Verify the code doesn't exist by checking if we get 404
-        // If we get 200, try a different code (very unlikely but handle it)
-        Response checkResponse = given()
+        // Get all existing alpha2 codes from the API to ensure we use a code that doesn't exist
+        Response listResponse = given()
                 .spec(requestSpec)
-                .pathParam("alpha2Code", nonExistentCode)
+                .queryParam("limit", 1000) // Get a large number to cover most countries
                 .when()
-                .get("/countries/code/{alpha2Code}")
+                .get("/countries")
                 .then()
+                .statusCode(200)
                 .extract()
                 .response();
         
-        // If the code exists (200), try with a different combination
-        if (checkResponse.getStatusCode() == 200) {
-            // Use a different calculation to get a different code
-            alpha2Chars[0] = (char)('A' + ((timestamp * 13) % 26));
-            alpha2Chars[1] = (char)('A' + ((timestamp * 17) % 26));
-            nonExistentCode = new String(alpha2Chars);
+        List<Map<String, Object>> countries = listResponse.jsonPath().getList("");
+        java.util.Set<String> existingCodes = new java.util.HashSet<>();
+        if (countries != null) {
+            for (Map<String, Object> country : countries) {
+                String code = (String) country.get("alpha2Code");
+                if (code != null && !code.isEmpty()) {
+                    existingCodes.add(code);
+                }
+            }
+        }
+        
+        // Generate a code that's guaranteed not to exist
+        // Try all possible combinations systematically until we find one that doesn't exist
+        String nonExistentCode = null;
+        long timestamp = System.currentTimeMillis();
+        int attempts = 0;
+        int maxAttempts = 676; // 26 * 26 = all possible 2-letter combinations
+        
+        // Start with a timestamp-based code and iterate if needed
+        while (nonExistentCode == null && attempts < maxAttempts) {
+            // Generate a code using timestamp and attempt counter
+            int base = (int) ((timestamp + attempts) % 676);
+            char first = (char) ('A' + (base % 26));
+            char second = (char) ('A' + ((base / 26) % 26));
+            String candidateCode = String.valueOf(first) + String.valueOf(second);
+            
+            // Check if this code exists in the database
+            Response checkResponse = given()
+                    .spec(requestSpec)
+                    .pathParam("alpha2Code", candidateCode)
+                    .when()
+                    .get("/countries/code/{alpha2Code}")
+                    .then()
+                    .extract()
+                    .response();
+            
+            // If code doesn't exist (404), we found our candidate
+            if (checkResponse.getStatusCode() == 404) {
+                nonExistentCode = candidateCode;
+                break;
+            }
+            
+            attempts++;
+        }
+        
+        // Fallback: if we couldn't find a non-existent code (should never happen with real data),
+        // use a code that's definitely not in the standard ISO 3166 list
+        if (nonExistentCode == null) {
+            // Use "XX" which is reserved/unassigned in ISO 3166-1 alpha-2
+            // But check if it exists first
+            Response xxResponse = given()
+                    .spec(requestSpec)
+                    .pathParam("alpha2Code", "XX")
+                    .when()
+                    .get("/countries/code/{alpha2Code}")
+                    .then()
+                    .extract()
+                    .response();
+            
+            if (xxResponse.getStatusCode() == 404) {
+                nonExistentCode = "XX";
+            } else {
+                // Last resort: use a combination that's very unlikely
+                nonExistentCode = "ZZ";
+            }
         }
         
         // Now test that the non-existent code returns 404

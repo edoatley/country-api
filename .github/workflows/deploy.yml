@@ -111,20 +111,9 @@ jobs:
         id: upload_s3
         run: |
           JAR_FILE=$(find . -name "country-service-lambda-*.jar" | head -1)
-          # Extract version from tag if available, otherwise use timestamp
-          if [ -n "${{ steps.version.outputs.version }}" ]; then
-            VERSION="${{ steps.version.outputs.version }}"
-          else
-            # Fallback to timestamp for non-tag deployments
-            VERSION="$(date +%Y%m%d%H%M%S)"
-          fi
-          # Include version in S3 key to ensure CloudFormation detects changes
-          S3_KEY="lambda-packages/country-service-lambda-${VERSION}.jar"
-          echo "Uploading $JAR_FILE to s3://${{ env.S3_BUCKET }}/$S3_KEY"
-          aws s3 cp "$JAR_FILE" "s3://${{ env.S3_BUCKET }}/$S3_KEY" --region ${{ env.AWS_REGION }}
+          chmod +x scripts/upload-lambda-to-s3.sh
+          S3_KEY=$(./scripts/upload-lambda-to-s3.sh "$JAR_FILE" "${{ env.S3_BUCKET }}" "${{ env.AWS_REGION }}" "${{ steps.version.outputs.version }}")
           echo "s3-key=$S3_KEY" >> $GITHUB_OUTPUT
-          echo "Uploaded to s3://${{ env.S3_BUCKET }}/$S3_KEY"
-          echo "S3 key includes version: $VERSION"
       
       - name: Deploy Lambda execution roles (if needed)
         run: |
@@ -143,91 +132,48 @@ jobs:
       - name: Get Lambda execution role ARN
         id: lambda_role
         run: |
-          # Use secret if provided, otherwise get from CloudFormation stack
-          if [ -n "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_STAGING }}" ] && [ "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_STAGING }}" != "" ]; then
-            ROLE_ARN="${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_STAGING }}"
-            echo "Using role ARN from secret: $ROLE_ARN"
-          else
-            # Get from CloudFormation stack
-            STACK_NAME="country-service-lambda-execution-roles"
-            echo "Checking for CloudFormation stack: $STACK_NAME"
-            if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
-              echo "❌ Error: CloudFormation stack '$STACK_NAME' not found"
-              echo "Please deploy the execution roles stack first:"
-              echo "  cd infrastructure"
-              echo "  ./deploy-roles.sh"
-              exit 1
-            fi
-            ROLE_ARN=$(aws cloudformation describe-stacks \
-              --stack-name "$STACK_NAME" \
-              --region ${{ env.AWS_REGION }} \
-              --query 'Stacks[0].Outputs[?OutputKey==`LambdaExecutionRoleArnStaging`].OutputValue' \
-              --output text 2>/dev/null || echo "")
-            if [ -z "$ROLE_ARN" ]; then
-              echo "❌ Error: Lambda execution role ARN not found in stack outputs"
-              echo "Stack outputs:"
-              aws cloudformation describe-stacks \
-                --stack-name "$STACK_NAME" \
-                --region ${{ env.AWS_REGION }} \
-                --query 'Stacks[0].Outputs' \
-                --output table || true
-              exit 1
-            fi
-            echo "Got role ARN from CloudFormation: $ROLE_ARN"
-          fi
+          chmod +x scripts/get-lambda-role-arn.sh
+          ROLE_ARN=$(./scripts/get-lambda-role-arn.sh staging ${{ env.AWS_REGION }} "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_STAGING }}")
           echo "role_arn=$ROLE_ARN" >> $GITHUB_OUTPUT
       
-      - name: Deploy stack using CloudFormation
-        id: deploy
+      - name: Check stack status (handle ROLLBACK states)
+        id: stack_status
         run: |
-          cd infrastructure
-          chmod +x deploy-stack.sh
-          export API_KEY="${{ secrets.API_KEY }}"
-          ./deploy-stack.sh staging ${{ env.AWS_REGION }} "" ${{ env.S3_BUCKET }} ${{ steps.upload_s3.outputs.s3-key }}
+          STACK_NAME="country-service-staging"
+          STATUS=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].StackStatus' \
+            --output text 2>/dev/null || echo "NOT_FOUND")
+          
+          if [ "$STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STATUS" = "ROLLBACK_FAILED" ]; then
+            echo "⚠️  Stack in $STATUS state, deleting before redeployment..."
+            aws cloudformation delete-stack --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }}
+            echo "Waiting for stack deletion to complete..."
+            aws cloudformation wait stack-delete-complete --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} || true
+            echo "✅ Stack deleted, proceeding with deployment"
+          else
+            echo "✅ Stack status: $STATUS (proceeding with deployment)"
+          fi
+      
+      - name: Deploy CloudFormation stack
+        id: deploy
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+        with:
+          name: country-service-staging
+          template: infrastructure/lambda-api-gateway.yaml
+          parameter-overrides: Environment=staging,LambdaExecutionRoleArn=${{ steps.lambda_role.outputs.role_arn }},CodeS3Bucket=${{ env.S3_BUCKET }},CodeS3Key=${{ steps.upload_s3.outputs.s3-key }},ApiKey=${{ secrets.API_KEY }},DynamoDBTableName=Countries,Timeout=30,MemorySize=512
+          capabilities: CAPABILITY_NAMED_IAM
+          no-fail-on-empty-changeset: "1"
       
       - name: Get API Gateway URL from CloudFormation
         id: api_gateway
         run: |
-          STACK_NAME="country-service-staging"
-          echo "Checking for CloudFormation stack: $STACK_NAME"
-          if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
-            echo "❌ Error: CloudFormation stack '$STACK_NAME' not found"
-            echo "The deployment step should have created this stack. Check deployment logs above."
-            exit 1
-          fi
-          # Use ApiGatewayRootUrl which includes /api/v1, or fall back to ApiGatewayUrl
-          API_GATEWAY_ROOT_URL=$(aws cloudformation describe-stacks \
-            --stack-name "$STACK_NAME" \
-            --region ${{ env.AWS_REGION }} \
-            --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayRootUrl`].OutputValue' \
-            --output text 2>/dev/null || echo "")
-          API_GATEWAY_URL=$(aws cloudformation describe-stacks \
-            --stack-name "$STACK_NAME" \
-            --region ${{ env.AWS_REGION }} \
-            --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl`].OutputValue' \
-            --output text 2>/dev/null || echo "")
-          
-          # Prefer ApiGatewayRootUrl if available, otherwise use ApiGatewayUrl
-          if [ -n "$API_GATEWAY_ROOT_URL" ] && [ "$API_GATEWAY_ROOT_URL" != "None" ]; then
-            API_GATEWAY_URL="$API_GATEWAY_ROOT_URL"
-            echo "Using ApiGatewayRootUrl: $API_GATEWAY_URL"
-          elif [ -n "$API_GATEWAY_URL" ] && [ "$API_GATEWAY_URL" != "None" ]; then
-            echo "Using ApiGatewayUrl: $API_GATEWAY_URL"
-          else
-            API_GATEWAY_URL=""
-          fi
-          if [ -z "$API_GATEWAY_URL" ]; then
-            echo "❌ Error: API Gateway URL not found in stack outputs"
-            echo "Stack outputs:"
-            aws cloudformation describe-stacks \
-              --stack-name "$STACK_NAME" \
-              --region ${{ env.AWS_REGION }} \
-              --query 'Stacks[0].Outputs' \
-              --output table || true
-            exit 1
-          fi
+          chmod +x scripts/get-api-gateway-url.sh
+          API_GATEWAY_URL=$(./scripts/get-api-gateway-url.sh staging ${{ env.AWS_REGION }})
           echo "api-gateway-url=$API_GATEWAY_URL" >> $GITHUB_OUTPUT
-          echo "API Gateway URL: $API_GATEWAY_URL"
       
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -331,7 +277,6 @@ jobs:
           report_paths: 'country-service-api-tests/build/test-results/testStaging/TEST-*.xml'
           # Also check for test results in the default test directory (fallback)
           check_retries: true
-          fail_on_empty: false
 
   deploy-production:
     needs: build
@@ -368,20 +313,9 @@ jobs:
         id: upload_s3
         run: |
           JAR_FILE=$(find . -name "country-service-lambda-*.jar" | head -1)
-          # Extract version from tag if available, otherwise use timestamp
-          if [ -n "${{ steps.version.outputs.version }}" ]; then
-            VERSION="${{ steps.version.outputs.version }}"
-          else
-            # Fallback to timestamp for non-tag deployments
-            VERSION="$(date +%Y%m%d%H%M%S)"
-          fi
-          # Include version in S3 key to ensure CloudFormation detects changes
-          S3_KEY="lambda-packages/country-service-lambda-${VERSION}.jar"
-          echo "Uploading $JAR_FILE to s3://${{ env.S3_BUCKET }}/$S3_KEY"
-          aws s3 cp "$JAR_FILE" "s3://${{ env.S3_BUCKET }}/$S3_KEY" --region ${{ env.AWS_REGION }}
+          chmod +x scripts/upload-lambda-to-s3.sh
+          S3_KEY=$(./scripts/upload-lambda-to-s3.sh "$JAR_FILE" "${{ env.S3_BUCKET }}" "${{ env.AWS_REGION }}" "${{ steps.version.outputs.version }}")
           echo "s3-key=$S3_KEY" >> $GITHUB_OUTPUT
-          echo "Uploaded to s3://${{ env.S3_BUCKET }}/$S3_KEY"
-          echo "S3 key includes version: $VERSION"
       
       - name: Deploy Lambda execution roles (if needed)
         run: |
@@ -400,75 +334,48 @@ jobs:
       - name: Get Lambda execution role ARN
         id: lambda_role
         run: |
-          # Use secret if provided, otherwise get from CloudFormation stack
-          if [ -n "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION }}" ] && [ "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION }}" != "" ]; then
-            ROLE_ARN="${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION }}"
-            echo "Using role ARN from secret: $ROLE_ARN"
-          else
-            # Get from CloudFormation stack
-            STACK_NAME="country-service-lambda-execution-roles"
-            echo "Checking for CloudFormation stack: $STACK_NAME"
-            if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
-              echo "❌ Error: CloudFormation stack '$STACK_NAME' not found"
-              echo "Please deploy the execution roles stack first:"
-              echo "  cd infrastructure"
-              echo "  ./deploy-roles.sh"
-              exit 1
-            fi
-            ROLE_ARN=$(aws cloudformation describe-stacks \
-              --stack-name "$STACK_NAME" \
-              --region ${{ env.AWS_REGION }} \
-              --query 'Stacks[0].Outputs[?OutputKey==`LambdaExecutionRoleArnProduction`].OutputValue' \
-              --output text 2>/dev/null || echo "")
-            if [ -z "$ROLE_ARN" ]; then
-              echo "❌ Error: Lambda execution role ARN not found in stack outputs"
-              echo "Stack outputs:"
-              aws cloudformation describe-stacks \
-                --stack-name "$STACK_NAME" \
-                --region ${{ env.AWS_REGION }} \
-                --query 'Stacks[0].Outputs' \
-                --output table || true
-              exit 1
-            fi
-            echo "Got role ARN from CloudFormation: $ROLE_ARN"
-          fi
+          chmod +x scripts/get-lambda-role-arn.sh
+          ROLE_ARN=$(./scripts/get-lambda-role-arn.sh production ${{ env.AWS_REGION }} "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION }}")
           echo "role_arn=$ROLE_ARN" >> $GITHUB_OUTPUT
       
-      - name: Deploy stack using CloudFormation
-        id: deploy
+      - name: Check stack status (handle ROLLBACK states)
+        id: stack_status
         run: |
-          cd infrastructure
-          chmod +x deploy-stack.sh
-          export API_KEY="${{ secrets.API_KEY_PROD }}"
-          ./deploy-stack.sh production ${{ env.AWS_REGION }} "" ${{ env.S3_BUCKET }} ${{ steps.upload_s3.outputs.s3-key }}
+          STACK_NAME="country-service-production"
+          STATUS=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].StackStatus' \
+            --output text 2>/dev/null || echo "NOT_FOUND")
+          
+          if [ "$STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STATUS" = "ROLLBACK_FAILED" ]; then
+            echo "⚠️  Stack in $STATUS state, deleting before redeployment..."
+            aws cloudformation delete-stack --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }}
+            echo "Waiting for stack deletion to complete..."
+            aws cloudformation wait stack-delete-complete --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} || true
+            echo "✅ Stack deleted, proceeding with deployment"
+          else
+            echo "✅ Stack status: $STATUS (proceeding with deployment)"
+          fi
+      
+      - name: Deploy CloudFormation stack
+        id: deploy
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+        with:
+          name: country-service-production
+          template: infrastructure/lambda-api-gateway.yaml
+          parameter-overrides: Environment=production,LambdaExecutionRoleArn=${{ steps.lambda_role.outputs.role_arn }},CodeS3Bucket=${{ env.S3_BUCKET }},CodeS3Key=${{ steps.upload_s3.outputs.s3-key }},ApiKey=${{ secrets.API_KEY_PROD }},DynamoDBTableName=Countries,Timeout=30,MemorySize=512
+          capabilities: CAPABILITY_NAMED_IAM
+          no-fail-on-empty-changeset: "1"
       
       - name: Get API Gateway URL from CloudFormation
         id: api_gateway
         run: |
-          STACK_NAME="country-service-production"
-          echo "Checking for CloudFormation stack: $STACK_NAME"
-          if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
-            echo "❌ Error: CloudFormation stack '$STACK_NAME' not found"
-            echo "The deployment step should have created this stack. Check deployment logs above."
-            exit 1
-          fi
-          API_GATEWAY_URL=$(aws cloudformation describe-stacks \
-            --stack-name "$STACK_NAME" \
-            --region ${{ env.AWS_REGION }} \
-            --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl`].OutputValue' \
-            --output text 2>/dev/null || echo "")
-          if [ -z "$API_GATEWAY_URL" ]; then
-            echo "❌ Error: API Gateway URL not found in stack outputs"
-            echo "Stack outputs:"
-            aws cloudformation describe-stacks \
-              --stack-name "$STACK_NAME" \
-              --region ${{ env.AWS_REGION }} \
-              --query 'Stacks[0].Outputs' \
-              --output table || true
-            exit 1
-          fi
+          chmod +x scripts/get-api-gateway-url.sh
+          API_GATEWAY_URL=$(./scripts/get-api-gateway-url.sh production ${{ env.AWS_REGION }})
           echo "api-gateway-url=$API_GATEWAY_URL" >> $GITHUB_OUTPUT
-          echo "API Gateway URL: $API_GATEWAY_URL"
       
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -518,4 +425,3 @@ jobs:
           report_paths: 'country-service-api-tests/build/test-results/testStaging/TEST-*.xml'
           # Also check for test results in the default test directory (fallback)
           check_retries: true
-          fail_on_empty: false

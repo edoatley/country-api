@@ -52,13 +52,13 @@ This guide defines how we version, build, test, package, and deploy the Country 
   5. Configure AWS credentials (OIDC authentication)
   6. Deploy CloudFormation stack (Lambda + API Gateway)
   7. Run smoke tests to validate deployment
-- **Current Implementation:**
-  - Uses custom bash script (`infrastructure/deploy-stack.sh`) for CloudFormation deployment
-  - Handles parameter overrides, capabilities, and error reporting
-- **Future Enhancement (Sprint 8):**
-  - Evaluate migrating to `aws-actions/aws-cloudformation-github-deploy` GitHub Action
-  - Reference: https://aws.amazon.com/blogs/opensource/deploy-aws-cloudformation-stacks-with-github-actions/
-  - Benefits: Simpler workflow YAML, maintained by AWS, built-in change set handling
+- **Current Implementation (Sprint 14):**
+  - Uses `aws-actions/aws-cloudformation-github-deploy@v1` GitHub Action for CloudFormation deployment
+  - Helper scripts for pre-deployment checks (`get-lambda-role-arn.sh`, `upload-lambda-to-s3.sh`)
+  - Helper scripts for post-deployment (`get-api-gateway-url.sh`)
+  - Stack status check handles ROLLBACK_COMPLETE/ROLLBACK_FAILED states
+  - Benefits: Simpler workflow YAML, automatic change set handling, better GitHub Actions integration
+  - Reference: https://github.com/aws-actions/aws-cloudformation-github-deploy
 
 ### Sample workflow yaml (excerpt)
 ```yaml
