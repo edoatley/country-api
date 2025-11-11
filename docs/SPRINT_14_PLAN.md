@@ -64,16 +64,17 @@ If the GitHub Action doesn't fully replace our needs, we can:
 
 ### Phase 1: Research & Evaluation
 - [x] Research `aws-actions/aws-cloudformation-github-deploy` action
-- [ ] Review action documentation and examples
-- [ ] Identify gaps between action capabilities and our needs
-- [ ] Document decision: use action or optimize current approach
+- [x] Review action documentation and examples
+- [x] Identify gaps between action capabilities and our needs
+- [x] Document decision: use hybrid approach (action + helper scripts)
 
 ### Phase 2: Implementation
-**Option A: Migrate to GitHub Action**
-- [ ] Replace `deploy-stack.sh` usage with GitHub Action
-- [ ] Move pre-deployment checks to separate workflow steps
-- [ ] Update error handling to use action outputs
-- [ ] Test with staging deployment
+**Hybrid Approach: GitHub Action + Helper Scripts**
+- [x] Replace `deploy-stack.sh` deployment step with GitHub Action
+- [x] Keep pre-deployment checks using helper scripts
+- [x] Add stack status check for ROLLBACK states
+- [x] Update parameter-overrides format (comma-separated)
+- [x] Test with staging deployment (workflow running)
 
 **Option B: Optimize Current Approach**
 - [ ] Extract common deployment logic into composite action
