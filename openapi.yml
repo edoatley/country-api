@@ -20,7 +20,7 @@ tags:
     description: Operations related to country data management.
 
 paths:  
-  /countries:
+  /api/v1/countries:
     get:
       tags:
         - Country
@@ -104,7 +104,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /countries/code/{alpha2Code}:
+  /api/v1/countries/code/{alpha2Code}:
     parameters:
       - name: alpha2Code
         in: path
@@ -178,7 +178,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /countries/code/{alpha2Code}/history:
+  /api/v1/countries/code/{alpha2Code}/history:
     parameters:
       - name: alpha2Code
         in: path
@@ -210,7 +210,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /countries/code3/{alpha3Code}:
+  /api/v1/countries/code3/{alpha3Code}:
     parameters:
       - name: alpha3Code
         in: path
@@ -243,7 +243,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /countries/number/{numericCode}:
+  /api/v1/countries/number/{numericCode}:
     parameters:
       - name: numericCode
         in: path
