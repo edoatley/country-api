@@ -21,7 +21,10 @@ public class GlobalExceptionHandler {
      */
     @Schema(name = "Error", description = "Standard error response format")
     public static class ErrorResponse {
-        @Schema(description = "UTC timestamp when the error occurred", example = "2025-09-20T15:23:42.123Z", required = true)
+        @Schema(description = "UTC timestamp when the error occurred", 
+                example = "2025-09-20T15:23:42.123Z", 
+                format = "date-time",
+                required = true)
         public String timestamp;
         
         @Schema(description = "HTTP status code", example = "404", required = true)
@@ -30,10 +33,14 @@ public class GlobalExceptionHandler {
         @Schema(description = "Error type", example = "Not Found", required = true)
         public String error;
         
-        @Schema(description = "Human-readable error message", example = "Country with alpha2Code 'XX' not found.", required = true)
+        @Schema(description = "Human-readable error message", 
+                example = "Country with alpha2Code 'XX' not found.", 
+                required = true)
         public String message;
         
-        @Schema(description = "Request path that caused the error", example = "/api/v1/countries/code/XX")
+        @Schema(description = "Request path that caused the error", 
+                example = "/api/v1/countries/code/XX",
+                required = true)
         public String path;
     }
 
