@@ -136,13 +136,37 @@ jobs:
           ROLE_ARN=$(./scripts/get-lambda-role-arn.sh staging ${{ env.AWS_REGION }} "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_STAGING }}")
           echo "role_arn=$ROLE_ARN" >> $GITHUB_OUTPUT
       
-      - name: Deploy stack using CloudFormation
-        id: deploy
+      - name: Check stack status (handle ROLLBACK states)
+        id: stack_status
         run: |
-          cd infrastructure
-          chmod +x deploy-stack.sh
-          export API_KEY="${{ secrets.API_KEY }}"
-          ./deploy-stack.sh staging ${{ env.AWS_REGION }} "" ${{ env.S3_BUCKET }} ${{ steps.upload_s3.outputs.s3-key }}
+          STACK_NAME="country-service-staging"
+          STATUS=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].StackStatus' \
+            --output text 2>/dev/null || echo "NOT_FOUND")
+          
+          if [ "$STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STATUS" = "ROLLBACK_FAILED" ]; then
+            echo "⚠️  Stack in $STATUS state, deleting before redeployment..."
+            aws cloudformation delete-stack --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }}
+            echo "Waiting for stack deletion to complete..."
+            aws cloudformation wait stack-delete-complete --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} || true
+            echo "✅ Stack deleted, proceeding with deployment"
+          else
+            echo "✅ Stack status: $STATUS (proceeding with deployment)"
+          fi
+      
+      - name: Deploy CloudFormation stack
+        id: deploy
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+        with:
+          name: country-service-staging
+          template: infrastructure/lambda-api-gateway.yaml
+          parameter-overrides: Environment=staging,LambdaExecutionRoleArn=${{ steps.lambda_role.outputs.role_arn }},CodeS3Bucket=${{ env.S3_BUCKET }},CodeS3Key=${{ steps.upload_s3.outputs.s3-key }},ApiKey=${{ secrets.API_KEY }},DynamoDBTableName=Countries,Timeout=30,MemorySize=512
+          capabilities: CAPABILITY_NAMED_IAM
+          no-fail-on-empty-changeset: "1"
       
       - name: Get API Gateway URL from CloudFormation
         id: api_gateway
@@ -314,13 +338,37 @@ jobs:
           ROLE_ARN=$(./scripts/get-lambda-role-arn.sh production ${{ env.AWS_REGION }} "${{ secrets.LAMBDA_EXECUTION_ROLE_ARN_PRODUCTION }}")
           echo "role_arn=$ROLE_ARN" >> $GITHUB_OUTPUT
       
-      - name: Deploy stack using CloudFormation
-        id: deploy
+      - name: Check stack status (handle ROLLBACK states)
+        id: stack_status
         run: |
-          cd infrastructure
-          chmod +x deploy-stack.sh
-          export API_KEY="${{ secrets.API_KEY_PROD }}"
-          ./deploy-stack.sh production ${{ env.AWS_REGION }} "" ${{ env.S3_BUCKET }} ${{ steps.upload_s3.outputs.s3-key }}
+          STACK_NAME="country-service-production"
+          STATUS=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].StackStatus' \
+            --output text 2>/dev/null || echo "NOT_FOUND")
+          
+          if [ "$STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STATUS" = "ROLLBACK_FAILED" ]; then
+            echo "⚠️  Stack in $STATUS state, deleting before redeployment..."
+            aws cloudformation delete-stack --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }}
+            echo "Waiting for stack deletion to complete..."
+            aws cloudformation wait stack-delete-complete --stack-name "$STACK_NAME" --region ${{ env.AWS_REGION }} || true
+            echo "✅ Stack deleted, proceeding with deployment"
+          else
+            echo "✅ Stack status: $STATUS (proceeding with deployment)"
+          fi
+      
+      - name: Deploy CloudFormation stack
+        id: deploy
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+        with:
+          name: country-service-production
+          template: infrastructure/lambda-api-gateway.yaml
+          parameter-overrides: Environment=production,LambdaExecutionRoleArn=${{ steps.lambda_role.outputs.role_arn }},CodeS3Bucket=${{ env.S3_BUCKET }},CodeS3Key=${{ steps.upload_s3.outputs.s3-key }},ApiKey=${{ secrets.API_KEY_PROD }},DynamoDBTableName=Countries,Timeout=30,MemorySize=512
+          capabilities: CAPABILITY_NAMED_IAM
+          no-fail-on-empty-changeset: "1"
       
       - name: Get API Gateway URL from CloudFormation
         id: api_gateway
