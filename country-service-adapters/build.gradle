@@ -14,7 +14,7 @@ dependencies {
     implementation project(':country-service-application')
     
     // AWS SDK managed by BOM (latest version)
-    implementation platform('software.amazon.awssdk:bom:2.28.15')
+    implementation platform('software.amazon.awssdk:bom:2.38.2')
     implementation 'software.amazon.awssdk:dynamodb'
     
     // Spring dependencies managed by Spring Boot BOM
@@ -23,8 +23,8 @@ dependencies {
     implementation 'jakarta.servlet:jakarta.servlet-api'
     
     // AWS Lambda dependencies (no BOM available)
-    implementation 'com.amazonaws:aws-lambda-java-core:1.2.3'
-    implementation 'com.amazonaws:aws-lambda-java-events:3.11.4'
+    implementation 'com.amazonaws:aws-lambda-java-core:1.4.0'
+    implementation 'com.amazonaws:aws-lambda-java-events:3.16.1'
     
     // Jackson managed by Spring Boot BOM
     implementation 'com.fasterxml.jackson.core:jackson-databind'
@@ -37,9 +37,9 @@ dependencies {
     testImplementation 'org.mockito:mockito-junit-jupiter'
     
     // Testcontainers (no BOM, versions required - latest stable)
-    testImplementation 'org.testcontainers:testcontainers:1.20.4'
-    testImplementation 'org.testcontainers:localstack:1.20.4'
-    testImplementation 'org.testcontainers:junit-jupiter:1.20.4'
+    testImplementation 'org.testcontainers:testcontainers:2.0.1'
+    testImplementation 'org.testcontainers:localstack:1.21.3'
+    testImplementation 'org.testcontainers:junit-jupiter:1.21.3'
     testImplementation 'org.awaitility:awaitility:4.3.0'
 }
 
