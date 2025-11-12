@@ -99,6 +99,11 @@ All endpoints require the `X-API-KEY` header for authentication.
 - **Swagger UI**: Visit `http://localhost:8080/swagger-ui.html` when running locally
 - **OpenAPI JSON**: Available at `http://localhost:8080/api-docs`
 
+**OpenAPI Contract Validation:**
+- All API tests automatically validate requests and responses against the OpenAPI specification
+- Spec comparison runs in CI to ensure generated OpenAPI matches the static `openapi.yml`
+- See [OpenAPI Contract Validation](docs/SPRINT_15_PLAN.md) for details
+
 **Documentation:**
 - [User API Guide](docs/USER_API_GUIDE.md) – Comprehensive API documentation with examples
 - [Integration Samples](docs/INTEGRATION_SAMPLES.md) – Code samples for various languages and tools

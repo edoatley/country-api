@@ -25,6 +25,7 @@ management:
 springdoc:
   api-docs:
     path: /api-docs
+    version: openapi_3_0  # Force OpenAPI 3.0 to support nullable property
   swagger-ui:
     path: /swagger-ui.html
     enabled: true

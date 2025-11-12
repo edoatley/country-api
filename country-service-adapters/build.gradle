@@ -30,6 +30,10 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     
+    // SpringDoc OpenAPI annotations (for schema definitions)
+    // Version matches SpringDoc OpenAPI 2.8.14 used in bootstrap module (pulls in 2.2.38)
+    implementation 'io.swagger.core.v3:swagger-annotations-jakarta:2.2.38'
+    
     // JUnit and Mockito managed by Spring Boot BOM (explicit to ensure version alignment)
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.junit.platform:junit-platform-launcher' // Explicit for version alignment

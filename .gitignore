@@ -42,6 +42,9 @@ build/
 # Application PID file
 .app.pid
 
+# Temporary comparison files
+tmp/
+
 # IDEA
 .idea/
 

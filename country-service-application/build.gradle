@@ -12,6 +12,9 @@ dependencyManagement {
 dependencies {
     api project(':country-service-domain')
     
+    // OpenAPI annotations for CountryInput schema documentation
+    implementation 'io.swagger.core.v3:swagger-annotations-jakarta:2.2.38'
+    
     // Test dependencies managed by Spring Boot BOM
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.junit.platform:junit-platform-launcher' // Explicit for version alignment

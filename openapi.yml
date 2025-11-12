@@ -10,6 +10,12 @@ info:
     - **Primary Identifier**: The ISO `alpha2Code` is the primary identifier for all resources. All mutation operations (PUT, DELETE) must use the `/countries/code/{alpha2Code}` path.
     - **Versioning**: Every update creates a new version of the country record, and the full history is accessible via the history endpoint.
   version: 1.1.0
+  contact:
+    name: Country Reference Service
+    email: support@example.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
 servers:
   - url: https://api.example.com/v1
     description: Production server
@@ -20,7 +26,7 @@ tags:
     description: Operations related to country data management.
 
 paths:  
-  /countries:
+  /api/v1/countries:
     get:
       tags:
         - Country
@@ -69,6 +75,8 @@ paths:
                       createDate: "2025-01-10T10:00:00Z"
                       expiryDate: null
                       isDeleted: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '500':
@@ -104,7 +112,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /countries/code/{alpha2Code}:
+  /api/v1/countries/code/{alpha2Code}:
     parameters:
       - name: alpha2Code
         in: path
@@ -178,7 +186,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /countries/code/{alpha2Code}/history:
+  /api/v1/countries/code/{alpha2Code}/history:
     parameters:
       - name: alpha2Code
         in: path
@@ -210,7 +218,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /countries/code3/{alpha3Code}:
+  /api/v1/countries/code3/{alpha3Code}:
     parameters:
       - name: alpha3Code
         in: path
@@ -243,7 +251,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /countries/number/{numericCode}:
+  /api/v1/countries/number/{numericCode}:
     parameters:
       - name: numericCode
         in: path
@@ -380,6 +388,7 @@ components:
         - status
         - error
         - message
+        - path
       example:
         timestamp: "2025-09-20T15:23:42.123Z"
         status: 404
