@@ -1,7 +1,7 @@
 # Country Reference Service - Progress Summary
 
 ## Overview
-This document summarizes progress across completed sprints (0-11) and current state of the Country Reference Service implementation.
+This document summarizes progress across completed sprints (0-15) and current state of the Country Reference Service implementation.
 
 ---
 
@@ -351,6 +351,123 @@ This document summarizes progress across completed sprints (0-11) and current st
 
 ---
 
+## Sprint 12: Deployment API Test Suite (`12-deployment-api-tests`)
+**Status:** ✅ Complete
+
+### Achievements
+- **API Test Module:**
+  - Created `country-service-api-tests` module (completely isolated, zero dependencies on application code)
+  - Framework-agnostic API testing using RestAssured
+  - Tests can run against local application or deployed staging/production environments
+  - Comprehensive test coverage for all endpoints:
+    - List all countries (paginated)
+    - Get country by alpha-2, alpha-3, and numeric codes
+    - Create, update, and delete operations
+    - Country history retrieval
+    - Authentication and error handling
+- **Test Configuration:**
+  - Environment-based configuration via system properties or environment variables
+  - Separate Gradle tasks: `testLocal` and `testStaging`
+  - OpenAPI validation integrated using `swagger-request-validator-restassured`
+  - Awaitility for handling eventual consistency
+- **CI/CD Integration:**
+  - API tests run automatically in deployment workflow after staging/production deployment
+  - Test results published to GitHub Actions
+  - Connectivity checks and Lambda log fetching for debugging
+  - Comprehensive error reporting with test result summaries
+- **Helper Scripts:**
+  - `scripts/test-staging.sh` for running tests against staging
+  - Automatic API Gateway URL and API key retrieval from CloudFormation
+- **Documentation:**
+  - `country-service-api-tests/README.md` with comprehensive usage instructions
+  - Test coverage documented in module README
+
+---
+
+## Sprint 13: OpenAPI Specification Alignment (`13-openapi-alignment`)
+**Status:** ✅ Complete
+
+### Achievements
+- **OpenAPI Schema Fixes:**
+  - Fixed `Country` schema to properly document all fields (name, alpha2Code, alpha3Code, numericCode, createDate, expiryDate, isDeleted)
+  - Resolved duplicate `deleted`/`isDeleted` field issue using `@Schema(hidden = true)`
+  - Fixed `nullable: true` on `expiryDate` by configuring OpenAPI 3.0 generation
+  - Corrected required fields array to match static specification
+  - Added `@Schema(format = "date-time")` to timestamp fields in error responses
+- **OpenAPI Configuration:**
+  - Set `springdoc.api-docs.version=openapi_3_0` in `application.yml`
+  - Created `OpenApiCustomizer` to ensure schema consistency
+  - Proper schema replacement for Country DTO
+- **Documentation:**
+  - Created analysis documents for OpenAPI differences
+  - Documented acceptable vs. functional differences
+  - Established normalization approach for spec comparison
+
+---
+
+## Sprint 14: Deployment Optimization (`14-deployment-optimization`)
+**Status:** ✅ Complete
+
+### Achievements
+- **CloudFormation GitHub Action Integration:**
+  - Evaluated `aws-actions/aws-cloudformation-github-deploy` action
+  - Implemented hybrid approach: GitHub Action for deployment, helper scripts for pre-checks
+  - Replaced custom `deploy-stack.sh` deployment step with GitHub Action
+  - Maintained all existing functionality (pre-deployment checks, stack status handling)
+- **Workflow Improvements:**
+  - Simplified deployment workflow YAML
+  - Better error reporting with standardized GitHub Action output
+  - Automatic change set handling
+  - Stack status checks for ROLLBACK states before deployment
+  - Improved stack output retrieval via action outputs
+- **Helper Scripts:**
+  - `scripts/get-lambda-role-arn.sh` for Lambda execution role retrieval
+  - `scripts/get-api-gateway-url.sh` for API Gateway URL retrieval
+  - `scripts/upload-lambda-to-s3.sh` for S3 uploads
+- **Documentation:**
+  - `docs/CLOUDFORMATION_ACTION_EVALUATION.md` - Evaluation and decision rationale
+  - `docs/SPRINT_14_PLAN.md` - Implementation plan and status
+  - Updated deployment workflow documentation
+
+---
+
+## Sprint 15: OpenAPI Contract Validation (`15-openapi-contract-validation`)
+**Status:** ✅ Complete (Phases 1-2)
+
+### Achievements
+- **OpenAPI Spec Comparison:**
+  - Created comprehensive normalization script (`scripts/normalize_openapi.py`):
+    - Expands all `$ref` references (including nested ones in array items)
+    - Normalizes content types, descriptions, tag names
+    - Sorts response codes, parameters, required fields, and properties
+    - Removes examples recursively
+    - Handles reusable components expansion
+    - Removes auto-generated 404 responses from list endpoints
+  - Created comparison script (`scripts/compare-openapi-specs.sh`):
+    - Fetches generated spec from running application
+    - Normalizes both static and generated specs
+    - Compares and reports only functional differences
+    - Exits with success if specs match after normalization
+- **Code Fixes:**
+  - Set OpenAPI version to 3.0.3 in configuration
+  - Added parameter constraints (minimum/maximum) to pagination parameters
+  - Added 400 response to static spec for GET `/api/v1/countries`
+  - Added customizer to remove 404 from list endpoints in code
+- **CI Integration:**
+  - Spec comparison step added to CI workflow (non-blocking)
+  - Catches annotation/spec mismatches automatically
+  - Documents acceptable differences (reusable components, field ordering)
+- **Documentation:**
+  - `docs/SPRINT_15_PLAN.md` - Comprehensive plan and status
+  - `docs/OPENAPI_DIFFERENCES_FINAL.md` - Final analysis of acceptable differences
+  - Normalization script usage documented
+
+### Remaining Work (Phase 3-4)
+- Enhanced validation (validate all endpoints documented, validate schemas match)
+- Documentation updates for validation process
+
+---
+
 ## Current State Summary
 
 ### ✅ Completed Components
@@ -385,20 +502,28 @@ This document summarizes progress across completed sprints (0-11) and current st
 | **Developer Guide** | ✅ Complete | `docs/DEVELOPER_GUIDE.md` |
 | **Integration Samples** | ✅ Complete | `docs/INTEGRATION_SAMPLES.md` |
 | **Local Setup Scripts** | ✅ Complete | `scripts/setup-local-dynamodb.sh` |
+| **API Test Suite** | ✅ Complete | `country-service-api-tests` module |
+| **OpenAPI Validation** | ✅ Complete | Spec comparison and normalization scripts |
+| **Deployment Optimization** | ✅ Complete | CloudFormation GitHub Action integration |
 
-### 🔄 Next Steps (Sprint 12+)
+### 🔄 Next Steps (Sprint 16+)
 
-1. **Deployment API Test Suite:**
-   - Create test suite that runs against deployed API
-   - Functional tests for deployed endpoints
-   - Integration tests against production/staging environment
-   - Smoke tests in deployment workflow
-   - Performance and security tests
+1. **Logging Refactoring (Sprint 16):**
+   - Replace `System.out`/`System.err` with SLF4J in production code
+   - Replace `System.out`/`System.err` with SLF4J in test code
+   - Use Lambda context logger in Lambda handlers for CloudWatch integration
+   - Update documentation with logging best practices
+   - See `docs/SPRINT_16_PLAN.md` for detailed implementation plan
 
-2. **Deployment Optimization:**
-   - Evaluate AWS CloudFormation GitHub Action (`aws-actions/aws-cloudformation-github-deploy`)
-   - Migrate from custom bash script to GitHub Action if beneficial
-   - Simplify workflow YAML and reduce maintenance overhead
+2. **JUnit 6 Upgrade (Future):**
+   - Upgrade Gradle to 9.0+ (required for JUnit 6)
+   - Update Shadow plugin to new GradleUp version
+   - Upgrade JUnit to 6.0.0
+   - Update build scripts for Gradle 9 compatibility
+
+3. **OpenAPI Contract Validation (Phase 3-4):**
+   - Enhanced validation (validate all endpoints documented, validate schemas match)
+   - Documentation updates for validation process
 
 ---
 
@@ -432,16 +557,19 @@ This document summarizes progress across completed sprints (0-11) and current st
 ## Build & Test Status
 
 - ✅ All modules compile successfully
-- ✅ All 100 tests pass (unit + integration)
+- ✅ All unit and integration tests pass
+- ✅ API tests pass against local and staging environments
 - ✅ Code coverage: >80% in adapters and bootstrap modules
 - ✅ Test data isolation prevents conflicts between tests
 - ✅ Integration tests pass with LocalStack (Docker available)
 - ✅ ArchUnit boundary tests pass
 - ✅ Lambda/API Gateway integration complete with full test coverage
+- ✅ OpenAPI spec validation in CI (comparison script)
 - ✅ CI/CD pipeline green on PRs and main:
   - Build, test, and coverage reporting
   - Dependabot monitoring dependencies
   - Test results published to GitHub Actions
+  - API tests run automatically after deployment
 
 **Project is in a stable, buildable state ready for next sprint implementation.**
 
@@ -459,5 +587,9 @@ This document summarizes progress across completed sprints (0-11) and current st
 8. `08-lambda-api-gateway-integration` → Merged (Sprint 6)
 9. `09-deployment-workflow` → Merged (Sprint 7)
 10. `10-dependency-updates` → Merged (Sprint 10)
-11. `11-documentation-user-guide` → Ready to merge (Sprint 11)
+11. `11-documentation-user-guide` → Merged (Sprint 11)
+12. `12-deployment-api-tests` → Merged (Sprint 12)
+13. `13-openapi-alignment` → Merged (Sprint 13)
+14. `14-deployment-optimization` → Merged (Sprint 14)
+15. `15-openapi-contract-validation` → Merged (Sprint 15)
 
