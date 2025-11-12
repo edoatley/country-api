@@ -4,6 +4,8 @@ import io.restassured.response.Response;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -16,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("api")
 @DisplayName("Country API Tests")
 class CountryApiTest extends BaseApiTest {
+    private static final Logger log = LoggerFactory.getLogger(CountryApiTest.class);
     
     @Test
     @DisplayName("GET /api/v1/countries - List all countries (paginated)")
@@ -41,7 +44,7 @@ class CountryApiTest extends BaseApiTest {
         if (!countries.isEmpty()) {
             Map<String, Object> country = countries.get(0);
             // Log the actual country structure for debugging
-            System.out.println("  First country in list: " + country);
+            log.debug("  First country in list: {}", country);
             assertTrue(country.containsKey("name"), 
                     "Country should have 'name' field. Actual country: " + country);
             assertTrue(country.containsKey("alpha2Code"), 
@@ -51,7 +54,7 @@ class CountryApiTest extends BaseApiTest {
             assertTrue(country.containsKey("numericCode"), 
                     "Country should have 'numericCode' field. Actual country: " + country);
         } else {
-            System.out.println("  ⚠️  Warning: Countries list is empty - this may indicate the database is empty");
+            log.warn("  Warning: Countries list is empty - this may indicate the database is empty");
         }
     }
     
@@ -102,11 +105,11 @@ class CountryApiTest extends BaseApiTest {
         
         if (alpha2Code == null || alpha2Code.isEmpty()) {
             // Skip test if no valid alpha2Code found
-            System.out.println("  ⚠️  Skipping test: No valid (retrievable) alpha2Code found");
+            log.warn("  Skipping test: No valid (retrievable) alpha2Code found");
             return;
         }
         
-        System.out.println("  Testing with alpha2Code: " + alpha2Code);
+        log.debug("  Testing with alpha2Code: {}", alpha2Code);
         
         // Test getting by alpha-2 code
         given()
@@ -262,11 +265,11 @@ class CountryApiTest extends BaseApiTest {
         }
         
         if (alpha3Code == null || alpha3Code.isEmpty()) {
-            System.out.println("  ⚠️  Skipping test: No valid (retrievable) alpha3Code found");
+            log.warn("  Skipping test: No valid (retrievable) alpha3Code found");
             return;
         }
         
-        System.out.println("  Testing with alpha3Code: " + alpha3Code);
+        log.debug("  Testing with alpha3Code: {}", alpha3Code);
         
         given()
                 .spec(requestSpec)
@@ -325,11 +328,11 @@ class CountryApiTest extends BaseApiTest {
         }
         
         if (numericCode == null || numericCode.isEmpty()) {
-            System.out.println("  ⚠️  Skipping test: No valid (retrievable) numericCode found");
+            log.warn("  Skipping test: No valid (retrievable) numericCode found");
             return;
         }
         
-        System.out.println("  Testing with numericCode: " + numericCode);
+        log.debug("  Testing with numericCode: {}", numericCode);
         
         given()
                 .spec(requestSpec)
@@ -583,8 +586,8 @@ class CountryApiTest extends BaseApiTest {
         // Verify history is ordered (newest first)
         Map<String, Object> first = history.get(0);
         Map<String, Object> second = history.get(1);
-        System.out.println("  First history entry: " + first);
-        System.out.println("  Second history entry: " + second);
+        log.debug("  First history entry: {}", first);
+        log.debug("  Second history entry: {}", second);
         assertNotNull(first, "First history entry should not be null");
         assertNotNull(second, "Second history entry should not be null");
         assertNotNull(first.get("createDate"), 

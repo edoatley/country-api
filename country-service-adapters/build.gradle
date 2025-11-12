@@ -30,6 +30,9 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     
+    // SLF4J for logging (API only, implementation provided by Lambda runtime or Spring Boot)
+    implementation 'org.slf4j:slf4j-api'
+    
     // SpringDoc OpenAPI annotations (for schema definitions)
     // Version matches SpringDoc OpenAPI 2.8.14 used in bootstrap module (pulls in 2.2.38)
     implementation 'io.swagger.core.v3:swagger-annotations-jakarta:2.2.38'
@@ -45,6 +48,9 @@ dependencies {
     testImplementation 'org.testcontainers:localstack:1.21.3'
     testImplementation 'org.testcontainers:junit-jupiter:1.21.3'
     testImplementation 'org.awaitility:awaitility:4.3.0'
+    
+    // SLF4J implementation for tests
+    testImplementation 'org.slf4j:slf4j-simple'
 }
 
 // Lambda deployment package configuration

@@ -8,6 +8,8 @@ import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -27,6 +29,7 @@ import java.nio.file.StandardCopyOption;
  * - `api.test.openapi.validation.enabled=false`
  */
 public abstract class BaseApiTest {
+    private static final Logger log = LoggerFactory.getLogger(BaseApiTest.class);
     
     protected static String baseUrl;
     protected static String apiKey;
@@ -56,20 +59,20 @@ public abstract class BaseApiTest {
                 // Load OpenAPI spec from classpath
                 String openApiSpecPath = loadOpenApiSpec();
                 openApiValidationFilter = new OpenApiValidationFilter(openApiSpecPath);
-                System.out.println("  OpenAPI validation: ENABLED");
+                log.info("  OpenAPI validation: ENABLED");
             } catch (Exception e) {
-                System.err.println("  WARNING: Failed to load OpenAPI spec for validation: " + e.getMessage());
-                System.err.println("  OpenAPI validation: DISABLED");
+                log.warn("  Failed to load OpenAPI spec for validation: {}", e.getMessage());
+                log.warn("  OpenAPI validation: DISABLED");
                 openApiValidationFilter = null;
             }
         } else {
-            System.out.println("  OpenAPI validation: DISABLED (via configuration)");
+            log.info("  OpenAPI validation: DISABLED (via configuration)");
             openApiValidationFilter = null;
         }
         
-        System.out.println("API Test Configuration:");
-        System.out.println("  Base URL: " + baseUrl);
-        System.out.println("  API Key: " + (apiKey.length() > 10 ? apiKey.substring(0, 10) + "..." : apiKey));
+        log.info("API Test Configuration:");
+        log.info("  Base URL: {}", baseUrl);
+        log.info("  API Key: {}", apiKey.length() > 10 ? apiKey.substring(0, 10) + "..." : apiKey);
     }
     
     /**
@@ -105,9 +108,9 @@ public abstract class BaseApiTest {
         // Otherwise, set base path to /api/v1
         if (!baseUrl.contains("/api/v1")) {
             builder.setBasePath("/api/v1");
-            System.out.println("  Base path set to: /api/v1");
+            log.debug("  Base path set to: /api/v1");
         } else {
-            System.out.println("  Base URL already includes /api/v1, not setting base path");
+            log.debug("  Base URL already includes /api/v1, not setting base path");
         }
         
         // Add OpenAPI validation filter if enabled

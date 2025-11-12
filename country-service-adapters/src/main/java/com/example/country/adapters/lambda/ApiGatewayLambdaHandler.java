@@ -1,6 +1,7 @@
 package com.example.country.adapters.lambda;
 
 import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -9,6 +10,8 @@ import com.example.country.domain.Country;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,6 +23,7 @@ import java.util.Objects;
  * Parses API Gateway events and delegates to CountryLambdaHandler.
  */
 public class ApiGatewayLambdaHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+    private static final Logger log = LoggerFactory.getLogger(ApiGatewayLambdaHandler.class);
     private static final String API_KEY_HEADER = "X-API-KEY";
     private static final String DEFAULT_API_KEY = System.getenv("API_KEY");
     
@@ -41,13 +45,12 @@ public class ApiGatewayLambdaHandler implements RequestHandler<APIGatewayProxyRe
             Country testCountry = Country.of("Test", "TT", "TTT", "999", 
                     java.time.Instant.now(), null, false);
             String testJson = this.objectMapper.writeValueAsString(testCountry);
-            System.out.println("ObjectMapper initialization test - serialized Country: " + testJson);
+            log.debug("ObjectMapper initialization test - serialized Country: {}", testJson);
             if (!testJson.contains("\"name\"")) {
-                System.err.println("WARNING: Country serialization missing 'name' field! JSON: " + testJson);
+                log.warn("Country serialization missing 'name' field! JSON: {}", testJson);
             }
         } catch (Exception e) {
-            System.err.println("ERROR: Could not test Country serialization: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Could not test Country serialization: {}", e.getMessage(), e);
         }
         
         this.apiKeyValidator = Objects.requireNonNull(apiKeyValidator);
@@ -139,7 +142,12 @@ public class ApiGatewayLambdaHandler implements RequestHandler<APIGatewayProxyRe
         } catch (NoSuchElementException e) {
             return createErrorResponse(404, "Not Found", e.getMessage());
         } catch (Exception e) {
-            context.getLogger().log("Error processing request: " + e.getMessage());
+            if (context != null) {
+                LambdaLogger logger = context.getLogger();
+                logger.log("Error processing request: " + e.getMessage());
+            } else {
+                log.error("Error processing request: {}", e.getMessage(), e);
+            }
             return createErrorResponse(500, "Internal Server Error", "An unexpected error occurred");
         }
     }

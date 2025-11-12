@@ -129,13 +129,48 @@ log.debug("  First country in list: {}", country);
 - Add logger instance
 
 ### Phase 3: Testing & Validation
-**Estimated Time:** 1 hour
+**Estimated Time:** 2-3 hours
 
+#### Step 3.1: Local Testing
 1. Run all unit tests to ensure logging changes don't break anything
 2. Run integration tests to verify test logging works correctly
 3. Run API tests to verify test output is still useful
-4. Deploy to staging and verify Lambda logs appear in CloudWatch
-5. Check that log levels are appropriate (DEBUG for verbose, INFO for important, WARN for warnings, ERROR for errors)
+4. Check that log levels are appropriate (DEBUG for verbose, INFO for important, WARN for warnings, ERROR for errors)
+
+#### Step 3.2: AWS Deployment & Log Verification (Critical)
+1. **Deploy to staging via deploy.yml workflow:**
+   - Create and push a tag (e.g., `v1.0.29`) to trigger deployment
+   - Monitor the deployment workflow in GitHub Actions
+   - Verify deployment completes successfully
+
+2. **Verify Lambda logs in CloudWatch:**
+   - Navigate to CloudWatch Logs in AWS Console
+   - Find the Lambda function log group: `/aws/lambda/country-service-lambda-staging`
+   - Check recent log streams for:
+     - **Initialization logs:** Should see DEBUG level logs from constructor (ObjectMapper initialization test)
+     - **Request processing logs:** Should see INFO/DEBUG logs from handleRequest method
+     - **Error handling logs:** Test error scenarios and verify ERROR level logs appear
+     - **Warning logs:** Verify WARN level logs appear when appropriate
+
+3. **Verify log format and content:**
+   - Logs should use proper SLF4J format (not System.out/err)
+   - Lambda context logger should integrate with CloudWatch (timestamps, request IDs)
+   - Log levels should be appropriate (no DEBUG logs in production unless needed)
+   - Verify structured logging (parameterized messages with `{}` placeholders)
+
+4. **Test API endpoints and verify logging:**
+   - Make API calls to staging environment
+   - Check CloudWatch logs to verify:
+     - Request processing logs appear
+     - Serialization debug logs (if enabled) appear
+     - Error logs appear for invalid requests
+     - No System.out/err messages in logs
+
+5. **Document log verification:**
+   - Document CloudWatch log group location
+   - Document how to access and filter logs
+   - Document expected log patterns
+   - Add troubleshooting guide for log issues
 
 ### Phase 4: Documentation
 **Estimated Time:** 30 minutes
@@ -156,8 +191,13 @@ log.debug("  First country in list: {}", country);
 - [ ] Lambda handlers use context logger for CloudWatch integration
 - [ ] SLF4J dependencies added where needed
 - [ ] All tests pass with new logging
-- [ ] Lambda logs visible in CloudWatch Logs
+- [ ] **Deployment to staging via deploy.yml workflow successful**
+- [ ] **Lambda logs visible and correct in CloudWatch Logs**
+- [ ] **Log format verified (proper SLF4J, no System.out/err)**
+- [ ] **Log levels verified (DEBUG, INFO, WARN, ERROR used appropriately)**
+- [ ] **API requests generate expected logs in CloudWatch**
 - [ ] Documentation updated with logging best practices
+- [ ] CloudWatch log access and troubleshooting documented
 
 ## Log Level Guidelines
 
@@ -177,9 +217,11 @@ log.debug("  First country in list: {}", country);
 
 - **Phase 1 (Production Code):** 2-3 hours
 - **Phase 2 (Test Code):** 2-3 hours
-- **Phase 3 (Testing):** 1 hour
+- **Phase 3 (Testing & Validation):** 2-3 hours
+  - Local testing: 1 hour
+  - AWS deployment & log verification: 1-2 hours
 - **Phase 4 (Documentation):** 30 minutes
-- **Total:** 6-7 hours
+- **Total:** 7-9 hours
 
 ## Risks & Mitigation
 
@@ -191,9 +233,59 @@ log.debug("  First country in list: {}", country);
   - **Mitigation:** Use SLF4J logger as fallback for initialization code
   - **Mitigation:** Check context availability before using context logger
 
+## CloudWatch Log Verification Steps
+
+### 1. Deploy to Staging
+```bash
+# Create and push a tag to trigger deployment
+git tag v1.0.29 -m "Sprint 16: Logging refactoring"
+git push origin v1.0.29
+```
+
+### 2. Monitor Deployment
+- Check GitHub Actions workflow: `.github/workflows/deploy.yml`
+- Verify deployment completes successfully
+- Note the Lambda function name from CloudFormation outputs
+
+### 3. Access CloudWatch Logs
+1. Navigate to AWS Console → CloudWatch → Log groups
+2. Find log group: `/aws/lambda/country-service-lambda-staging`
+3. Click on the most recent log stream
+4. Review logs for:
+   - Initialization logs (from constructor)
+   - Request processing logs
+   - Error logs (if any)
+
+### 4. Verify Log Format
+- ✅ Logs should have timestamps
+- ✅ Logs should have request IDs (from Lambda context)
+- ✅ Logs should use proper log levels (DEBUG, INFO, WARN, ERROR)
+- ✅ No System.out/err messages should appear
+- ✅ Parameterized logging should work (`{}` placeholders)
+
+### 5. Test API and Verify Logs
+```bash
+# Make API calls to staging
+curl -H "X-API-KEY: <api-key>" \
+  https://<api-gateway-url>/staging/api/v1/countries?limit=1
+
+# Check CloudWatch logs for:
+# - Request received logs
+# - Serialization logs (if DEBUG enabled)
+# - Response logs
+```
+
+### 6. Expected Log Patterns
+- **Initialization:** `DEBUG - ObjectMapper initialization test - serialized Country: {...}`
+- **Request Processing:** `INFO - Request received: GET /api/v1/countries`
+- **Errors:** `ERROR - Error processing request: <message>`
+- **Warnings:** `WARN - Country serialization missing 'name' field!`
+
 ## References
 
 - [SLF4J Documentation](http://www.slf4j.org/manual.html)
 - [AWS Lambda Logging Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/java-logging.html)
+- [CloudWatch Logs Console](https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups)
 - Current logging refactor plan: `docs/LOGGING_REFACTOR_PLAN.md`
+- Deployment workflow: `.github/workflows/deploy.yml`
 

@@ -5,12 +5,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class CountrySerializationTest {
+    private static final Logger log = LoggerFactory.getLogger(CountrySerializationTest.class);
 
     @Test
     void shouldSerializeCountryWithAllFields() throws Exception {
@@ -43,7 +46,7 @@ class CountrySerializationTest {
         assertTrue(json.contains("\"826\""), "JSON should contain numericCode");
         assertTrue(json.contains("\"isDeleted\":false"), "JSON should contain isDeleted field");
         
-        System.out.println("Serialized JSON: " + json);
+        log.debug("Serialized JSON: {}", json);
     }
     
     @Test
@@ -72,7 +75,7 @@ class CountrySerializationTest {
         assertTrue(json.contains("\"createDate\""), "JSON should contain 'createDate' field");
         assertTrue(json.contains("\"isDeleted\""), "JSON should contain 'isDeleted' field");
         
-        System.out.println("Serialized JSON: " + json);
+        log.debug("Serialized JSON: {}", json);
     }
 }
 
