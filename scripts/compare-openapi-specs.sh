@@ -9,15 +9,24 @@ set -e
 BASE_URL="${1:-http://localhost:8080}"
 API_DOCS_URL="${BASE_URL}/api-docs"
 STATIC_SPEC="openapi.yml"
-TEMP_GENERATED_SPEC="/tmp/generated-openapi-$$.json"
-TEMP_STATIC_SPEC="/tmp/static-openapi-$$.json"
-TEMP_STATIC_NORM="/tmp/static-openapi-normalized-$$.json"
-TEMP_GENERATED_NORM="/tmp/generated-openapi-normalized-$$.json"
-DIFF_OUTPUT="/tmp/openapi-diff-$$.txt"
 
-# Cleanup function
+# Create tmp directory in project root if it doesn't exist
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+TMP_DIR="${PROJECT_ROOT}/tmp"
+mkdir -p "${TMP_DIR}"
+
+# Use timestamp for unique filenames
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+TEMP_GENERATED_SPEC="${TMP_DIR}/generated-openapi-${TIMESTAMP}.json"
+TEMP_STATIC_SPEC="${TMP_DIR}/static-openapi-${TIMESTAMP}.json"
+TEMP_STATIC_NORM="${TMP_DIR}/static-openapi-normalized-${TIMESTAMP}.json"
+TEMP_GENERATED_NORM="${TMP_DIR}/generated-openapi-normalized-${TIMESTAMP}.json"
+DIFF_OUTPUT="${TMP_DIR}/openapi-diff-${TIMESTAMP}.txt"
+
+# Cleanup function - only removes normalized and diff files, keeps full specs for review
 cleanup() {
-    rm -f "${TEMP_GENERATED_SPEC}" "${TEMP_STATIC_SPEC}" "${TEMP_STATIC_NORM}" "${TEMP_GENERATED_NORM}" "${DIFF_OUTPUT}"
+    rm -f "${TEMP_STATIC_NORM}" "${TEMP_GENERATED_NORM}" "${DIFF_OUTPUT}"
 }
 trap cleanup EXIT
 
@@ -48,22 +57,6 @@ echo ""
 # Convert static YAML to JSON for comparison
 echo "2. Converting static openapi.yml to JSON..."
 if command -v python3 &> /dev/null; then
-    python3 << 'PYTHON_SCRIPT'
-import yaml
-import json
-import sys
-
-try:
-    with open('openapi.yml', 'r') as f:
-        yaml_data = yaml.safe_load(f)
-        with open('/tmp/static-openapi-$$.json', 'w') as out:
-            json.dump(yaml_data, out, indent=2, sort_keys=True)
-    sys.exit(0)
-except Exception as e:
-    print(f"Error: {e}", file=sys.stderr)
-    sys.exit(1)
-PYTHON_SCRIPT
-    # Replace $$ with actual PID
     python3 -c "
 import yaml
 import json
@@ -143,10 +136,13 @@ if command -v jq &> /dev/null; then
         echo "(Showing first 100 lines of diff - full diff saved)"
         echo ""
         
-        # Save full specs for manual review
+        # Save full specs for manual review (these are NOT cleaned up)
         echo "📄 Full specs saved for review:"
         echo "   Static: ${TEMP_STATIC_SPEC}"
         echo "   Generated: ${TEMP_GENERATED_SPEC}"
+        echo ""
+        echo "💡 Tip: These files are saved in the project's tmp/ directory and will persist."
+        echo "   You can review them with: jq '.' ${TEMP_STATIC_SPEC} or ${TEMP_GENERATED_SPEC}"
         echo ""
         echo "⚠️  ⚠️  ⚠️  ACTION REQUIRED ⚠️  ⚠️  ⚠️"
         echo "   Please review the differences above and decide:"

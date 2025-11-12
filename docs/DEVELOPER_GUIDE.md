@@ -244,6 +244,35 @@ Tests are tagged using JUnit 5 `@Tag`:
 
 - **Unit tests**: No tag (run by default)
 - **Integration tests**: `@Tag("integration")` (excluded by default, run with `./gradlew integrationTest`)
+- **API tests**: `@Tag("api")` (run against deployed applications, use `./gradlew :country-service-api-tests:testLocal`)
+
+### OpenAPI Contract Validation
+
+All API tests automatically validate requests and responses against the OpenAPI specification (`openapi.yml`):
+
+- **Automatic Validation**: RestAssured tests use `OpenApiValidationFilter` to validate all API calls
+- **Validation Enabled by Default**: OpenAPI validation is enabled for all API tests
+- **Disable if Needed**: Set `api.test.openapi.validation.enabled=false` to disable validation
+
+**What Gets Validated:**
+- Request headers, parameters, and body match the OpenAPI spec
+- Response status codes match the spec
+- Response schemas match the OpenAPI definition
+- Endpoints exist in the specification
+
+**Spec Comparison in CI:**
+- CI workflow compares the generated OpenAPI spec (from SpringDoc) with the static `openapi.yml`
+- Differences are reported but don't fail the build (acceptable differences are documented)
+- See `docs/OPENAPI_DIFFERENCES_FINAL.md` for details on acceptable differences
+
+**Running Spec Comparison Locally:**
+```bash
+# Ensure the application is running
+./gradlew :country-service-bootstrap:bootRun
+
+# In another terminal, run the comparison
+./scripts/compare-openapi-specs.sh
+```
 
 ### Test Data Isolation
 

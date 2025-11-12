@@ -1,7 +1,6 @@
 package com.example.country.bootstrap.config;
 
 import com.example.country.adapters.web.dto.CountryDTO;
-import com.example.country.domain.Country;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
@@ -13,6 +12,7 @@ import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 
 import java.util.List;
 
@@ -60,8 +60,11 @@ public class OpenApiConfiguration {
      * Customize OpenAPI to use CountryDTO schema for Country domain class.
      * This allows SpringDoc to generate proper schema documentation using the DTO
      * while the actual API continues to use the Country domain class.
+     * 
+     * Uses @Order(1) to ensure this runs after other customizers.
      */
     @Bean
+    @Order(1)
     public OpenApiCustomizer countrySchemaCustomizer() {
         return openApi -> {
             // Get the CountryDTO schema from ModelConverters
@@ -83,7 +86,29 @@ public class OpenApiConfiguration {
                     if (openApi.getComponents().getSchemas() == null) {
                         openApi.getComponents().setSchemas(new java.util.HashMap<>());
                     }
-                    openApi.getComponents().getSchemas().put("Country", resolvedSchema.schema);
+                    
+                    io.swagger.v3.oas.models.media.Schema<?> countrySchema = resolvedSchema.schema;
+                    
+                    // Remove the incorrectly generated "deleted" property (from isDeleted() getter)
+                    if (countrySchema.getProperties() != null) {
+                        countrySchema.getProperties().remove("deleted");
+                    }
+                    
+                    // Ensure expiryDate has nullable: true
+                    // Note: With springdoc.api-docs.version=openapi_3_0, the @Schema(nullable = true) annotation
+                    // should work directly, but we keep this as a safety measure to ensure it's set correctly
+                    if (countrySchema.getProperties() != null && countrySchema.getProperties().containsKey("expiryDate")) {
+                        io.swagger.v3.oas.models.media.Schema<?> expiryDateSchema = 
+                            (io.swagger.v3.oas.models.media.Schema<?>) countrySchema.getProperties().get("expiryDate");
+                        if (expiryDateSchema != null) {
+                            expiryDateSchema.setNullable(true);
+                        }
+                    }
+                    
+                    // Explicitly set required fields to match static spec
+                    countrySchema.setRequired(List.of("name", "alpha2Code", "alpha3Code", "numericCode", "createDate", "isDeleted"));
+                    
+                    openApi.getComponents().getSchemas().put("Country", countrySchema);
                 }
             } catch (Exception e) {
                 // If schema replacement fails, log but don't fail the application

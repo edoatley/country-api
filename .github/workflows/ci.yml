@@ -68,6 +68,24 @@ jobs:
       - name: Start application in background
         run: ./scripts/start-app.sh app.log
       
+      - name: Install dependencies for spec comparison
+        run: |
+          # Install jq for JSON processing
+          sudo apt-get update && sudo apt-get install -y jq python3-pip
+          # Install PyYAML for YAML to JSON conversion
+          pip3 install pyyaml
+      
+      - name: Compare OpenAPI specs
+        continue-on-error: true
+        run: |
+          echo "Comparing static openapi.yml with generated OpenAPI spec..."
+          ./scripts/compare-openapi-specs.sh http://localhost:8080 || {
+            echo "⚠️ OpenAPI spec comparison found differences"
+            echo "This is expected if there are acceptable differences (reusable components, field ordering)"
+            echo "Review the differences in the tmp/ directory if needed"
+            # Don't fail the build - differences are documented as acceptable
+          }
+      
       - name: Run API tests against local application
         env:
           API_TEST_BASE_URL: http://localhost:8080

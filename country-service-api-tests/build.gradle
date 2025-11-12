@@ -23,6 +23,9 @@ dependencies {
     testImplementation 'io.rest-assured:json-path:5.4.0'
     testImplementation 'io.rest-assured:xml-path:5.4.0'
     
+    // OpenAPI validation for RestAssured
+    testImplementation 'com.atlassian.oai:swagger-request-validator-restassured:2.46.0'
+    
     // Awaitility for async testing (waiting for eventual consistency)
     testImplementation 'org.awaitility:awaitility:4.3.0'
 }

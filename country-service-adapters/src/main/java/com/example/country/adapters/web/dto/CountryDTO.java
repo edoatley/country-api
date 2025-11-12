@@ -73,6 +73,7 @@ public class CountryDTO {
     public Instant getExpiryDate() { return expiryDate; }
     public void setExpiryDate(Instant expiryDate) { this.expiryDate = expiryDate; }
     
+    @Schema(hidden = true) // Hide this getter to prevent SpringDoc from generating a "deleted" property
     public boolean isDeleted() { return isDeleted; }
     public void setDeleted(boolean deleted) { isDeleted = deleted; }
 }
