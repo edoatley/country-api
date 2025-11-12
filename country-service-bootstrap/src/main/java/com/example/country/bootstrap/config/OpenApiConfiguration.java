@@ -153,6 +153,40 @@ public class OpenApiConfiguration {
             });
         }
     }
+    
+    /**
+     * Customizer to remove auto-generated 404 responses from list endpoints.
+     * SpringDoc auto-generates 404 responses for GET endpoints, but list endpoints
+     * (like GET /api/v1/countries) should never return 404 - they return empty lists instead.
+     */
+    @Bean
+    @Order(3)
+    public OpenApiCustomizer remove404FromListEndpointsCustomizer() {
+        return openApi -> {
+            if (openApi.getPaths() != null) {
+                // Remove 404 from GET /api/v1/countries (list endpoint)
+                var countriesPath = openApi.getPaths().get("/api/v1/countries");
+                if (countriesPath != null && countriesPath.getGet() != null) {
+                    var getOperation = countriesPath.getGet();
+                    if (getOperation.getResponses() != null) {
+                        // Remove 404 if it exists and wasn't explicitly documented
+                        var responses = getOperation.getResponses();
+                        if (responses.containsKey("404")) {
+                            var response404 = responses.get("404");
+                            // Only remove if it's auto-generated (has default description or no explicit documentation)
+                            if (response404 != null) {
+                                String description = response404.getDescription();
+                                // SpringDoc auto-generated 404s typically have "Not Found" as description
+                                if (description == null || "Not Found".equals(description)) {
+                                    responses.remove("404");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    }
 
     @Bean
     public GroupedOpenApi countryGroupedOpenApi() {

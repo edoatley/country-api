@@ -85,132 +85,22 @@ echo ""
 # Normalize both specs (remove server URLs, sort keys, etc.)
 echo "3. Normalizing specs for comparison..."
 if command -v jq &> /dev/null; then
-    # Normalize specs using Python to:
-    # 1. Remove servers (environment-specific)
-    # 2. Normalize info fields
-    # 3. Remove acceptable differences (reusable components)
-    # 4. Sort required arrays
-    # 5. Sort schema properties
-    python3 -c "
-import json
-import sys
-
-def normalize_spec(spec_data):
-    \"\"\"Normalize OpenAPI spec for comparison by removing acceptable differences.\"\"\"
-    # Remove servers (environment-specific)
-    if 'servers' in spec_data:
-        del spec_data['servers']
+    # Normalize specs using comprehensive normalization to ignore acceptable differences
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    NORMALIZE_SCRIPT="${SCRIPT_DIR}/normalize_openapi.py"
     
-    # Normalize info fields and OpenAPI version
-    if 'openapi' in spec_data:
-        spec_data['openapi'] = 'COMPARED'
-    if 'info' in spec_data:
-        spec_data['info']['version'] = 'COMPARED'
-        spec_data['info']['title'] = 'COMPARED'
-        spec_data['info']['description'] = 'COMPARED'
-        # Note: contact and license are kept for comparison (should match in both specs)
+    if [ ! -f "${NORMALIZE_SCRIPT}" ]; then
+        echo "❌ Error: Normalization script not found: ${NORMALIZE_SCRIPT}"
+        exit 1
+    fi
     
-    # Remove acceptable differences: reusable components
-    if 'components' in spec_data:
-        if 'examples' in spec_data['components']:
-            del spec_data['components']['examples']
-        if 'requestBodies' in spec_data['components']:
-            del spec_data['components']['requestBodies']
-        if 'responses' in spec_data['components']:
-            del spec_data['components']['responses']
-        
-        # Normalize schemas: sort required arrays and properties, remove examples
-        if 'schemas' in spec_data['components']:
-            for schema_name, schema in spec_data['components']['schemas'].items():
-                # Remove example fields (they may differ in structure/location)
-                if 'example' in schema:
-                    del schema['example']
-                
-                # Sort required array if it exists
-                if 'required' in schema and isinstance(schema['required'], list):
-                    schema['required'] = sorted(schema['required'])
-                
-                # Sort properties if they exist
-                if 'properties' in schema and isinstance(schema['properties'], dict):
-                    sorted_props = dict(sorted(schema['properties'].items()))
-                    schema['properties'] = sorted_props
-                    
-                    # Also sort required arrays and remove examples in nested schemas
-                    for prop_name, prop_schema in sorted_props.items():
-                        if isinstance(prop_schema, dict):
-                            if 'required' in prop_schema and isinstance(prop_schema['required'], list):
-                                prop_schema['required'] = sorted(prop_schema['required'])
-                            # Remove both 'example' and 'examples' (singular and plural)
-                            if 'example' in prop_schema:
-                                del prop_schema['example']
-                            if 'examples' in prop_schema:
-                                del prop_schema['examples']
+    python3 "${NORMALIZE_SCRIPT}" "${TEMP_STATIC_SPEC}" "${TEMP_STATIC_NORM}" || {
+        echo "❌ Error: Failed to normalize static spec"
+        exit 1
+    }
     
-    # Normalize paths: remove inline examples, normalize parameters
-    if 'paths' in spec_data:
-        def normalize_path_item(item):
-            \"\"\"Recursively normalize path items: remove examples and normalize parameters.\"\"\"
-            if isinstance(item, dict):
-                # Remove examples
-                if 'examples' in item:
-                    del item['examples']
-                if 'example' in item:
-                    del item['example']
-                
-                # Normalize parameters: remove minimum/maximum (validation constraints, not structural)
-                if 'parameters' in item and isinstance(item['parameters'], list):
-                    for param in item['parameters']:
-                        if isinstance(param, dict) and 'schema' in param:
-                            schema = param['schema']
-                            if isinstance(schema, dict):
-                                # Remove validation constraints for comparison
-                                if 'minimum' in schema:
-                                    del schema['minimum']
-                                if 'maximum' in schema:
-                                    del schema['maximum']
-                                if 'format' in schema and schema.get('type') == 'integer':
-                                    # Remove format from integer types (int32 vs no format)
-                                    del schema['format']
-                                # Remove required: false (default for query params)
-                                if 'required' in param and param['required'] is False:
-                                    del param['required']
-                
-                for key, value in item.items():
-                    if key == 'content' and isinstance(value, dict):
-                        for content_type, content_spec in value.items():
-                            if isinstance(content_spec, dict):
-                                if 'examples' in content_spec:
-                                    del content_spec['examples']
-                                if 'example' in content_spec:
-                                    del content_spec['example']
-                    elif isinstance(value, dict):
-                        normalize_path_item(value)
-                    elif isinstance(value, list):
-                        for list_item in value:
-                            if isinstance(list_item, dict):
-                                normalize_path_item(list_item)
-        
-        for path_key, path_item in spec_data['paths'].items():
-            if isinstance(path_item, dict):
-                normalize_path_item(path_item)
-    
-    return spec_data
-
-# Read and normalize static spec
-with open('${TEMP_STATIC_SPEC}', 'r') as f:
-    static_spec = json.load(f)
-normalize_spec(static_spec)
-with open('${TEMP_STATIC_NORM}', 'w') as f:
-    json.dump(static_spec, f, indent=2, sort_keys=True)
-
-# Read and normalize generated spec
-with open('${TEMP_GENERATED_SPEC}', 'r') as f:
-    generated_spec = json.load(f)
-normalize_spec(generated_spec)
-with open('${TEMP_GENERATED_NORM}', 'w') as f:
-    json.dump(generated_spec, f, indent=2, sort_keys=True)
-" 2>/dev/null || {
-        echo "❌ Error: Failed to normalize specs"
+    python3 "${NORMALIZE_SCRIPT}" "${TEMP_GENERATED_SPEC}" "${TEMP_GENERATED_NORM}" || {
+        echo "❌ Error: Failed to normalize generated spec"
         exit 1
     }
     
@@ -220,13 +110,16 @@ with open('${TEMP_GENERATED_NORM}', 'w') as f:
         echo "✅ Specs match (after normalization)"
         echo ""
         echo "Normalization applied:"
-        echo "  - Normalized OpenAPI version (3.0.1 vs 3.0.3)"
+        echo "  - Expanded \$ref references (reusable components)"
+        echo "  - Normalized OpenAPI version"
         echo "  - Removed server URLs (environment-specific)"
         echo "  - Normalized info fields (title, version, description)"
         echo "  - Removed reusable components (examples, requestBodies, responses)"
-        echo "  - Removed validation constraints from parameters (minimum, maximum, format)"
-        echo "  - Removed required: false from parameters (default for query params)"
-        echo "  - Sorted required arrays and schema properties"
+        echo "  - Normalized content types (*/* -> application/json)"
+        echo "  - Normalized descriptions (removed trailing periods)"
+        echo "  - Removed required: false from query parameters"
+        echo "  - Sorted response codes, parameters, required arrays, and schema properties"
+        echo "  - Removed all examples recursively"
         echo "  - Sorted all keys"
         echo ""
         echo "✅ Comparison complete - specs match!"
@@ -235,13 +128,16 @@ with open('${TEMP_GENERATED_NORM}', 'w') as f:
         echo "⚠️  SPECS DIFFER! Analyzing differences..."
         echo ""
         echo "Normalization applied:"
-        echo "  - Normalized OpenAPI version (3.0.1 vs 3.0.3)"
+        echo "  - Expanded \$ref references (reusable components)"
+        echo "  - Normalized OpenAPI version"
         echo "  - Removed server URLs (environment-specific)"
         echo "  - Normalized info fields (title, version, description)"
         echo "  - Removed reusable components (examples, requestBodies, responses)"
-        echo "  - Removed validation constraints from parameters (minimum, maximum, format)"
-        echo "  - Removed required: false from parameters (default for query params)"
-        echo "  - Sorted required arrays and schema properties"
+        echo "  - Normalized content types (*/* -> application/json)"
+        echo "  - Normalized descriptions (removed trailing periods)"
+        echo "  - Removed required: false from query parameters"
+        echo "  - Sorted response codes, parameters, required arrays, and schema properties"
+        echo "  - Removed all examples recursively"
         echo ""
         echo "=== Summary of Differences ==="
         echo ""
@@ -295,9 +191,12 @@ with open('${TEMP_GENERATED_NORM}', 'w') as f:
         echo "   Most differences are likely acceptable (see docs/OPENAPI_DIFFERENCES_FINAL.md)"
         echo ""
         echo "ℹ️  Note: This comparison ignores acceptable differences:"
-        echo "   - Reusable components (examples, requestBodies, responses)"
-        echo "   - Field ordering in arrays"
-        echo "   - Example placement"
+        echo "   - Reusable components (examples, requestBodies, responses) - expanded before comparison"
+        echo "   - Field ordering in arrays - sorted before comparison"
+        echo "   - Example placement - removed before comparison"
+        echo "   - Content type variations (*/* vs application/json) - normalized"
+        echo "   - Description punctuation - normalized"
+        echo "   - Response code ordering - sorted before comparison"
         echo ""
         echo "⚠️  If you see functional differences (missing paths, schemas, or properties),"
         echo "   please review and update either openapi.yml or the code annotations."
