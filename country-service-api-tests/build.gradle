@@ -16,7 +16,7 @@ dependencies {
     // JUnit 5 for testing framework
     // TODO: Upgrade to JUnit 6.0.0 - requires Gradle 9.0+ and build script updates
     testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
-    testImplementation 'org.junit.platform:junit-platform-launcher:1.12.2'
+    testImplementation 'org.junit.platform:junit-platform-launcher:6.0.1'
     
     // RestAssured for API testing (framework-agnostic, works with local and staging)
     testImplementation 'io.rest-assured:rest-assured:5.4.0'
