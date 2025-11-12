@@ -5,6 +5,7 @@ import com.example.country.application.model.CountryInput;
 import com.example.country.domain.Country;
 import com.example.country.adapters.web.exception.GlobalExceptionHandler.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -31,7 +32,11 @@ public class CountryController {
     @ApiResponse(responseCode = "500", description = "Internal Server Error",
                  content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<List<Country>> getAllCountries(
+            @Parameter(description = "The maximum number of countries to return.",
+                      schema = @Schema(type = "integer", defaultValue = "20", minimum = "1", maximum = "100"))
             @RequestParam(name = "limit", defaultValue = "20") int limit,
+            @Parameter(description = "The number of countries to skip before starting to collect the result set.",
+                      schema = @Schema(type = "integer", defaultValue = "0", minimum = "0"))
             @RequestParam(name = "offset", defaultValue = "0") int offset) {
         return ResponseEntity.ok(countryApi.listCountries(limit, offset));
     }

@@ -18,29 +18,24 @@ public class GlobalExceptionHandler {
     /**
      * Error response schema matching OpenAPI specification.
      * This schema is used by SpringDoc to generate the Error schema in the OpenAPI spec.
+     * Note: No description on schema itself to match static spec.
+     * Note: No example values on properties - examples are at schema level in static spec.
      */
-    @Schema(name = "Error", description = "Standard error response format")
+    @Schema(name = "Error")
     public static class ErrorResponse {
-        @Schema(description = "UTC timestamp when the error occurred", 
-                example = "2025-09-20T15:23:42.123Z", 
-                format = "date-time",
-                required = true)
+        @Schema(format = "date-time", required = true)
         public String timestamp;
         
-        @Schema(description = "HTTP status code", example = "404", required = true)
+        @Schema(format = "int32", required = true)
         public Integer status;
         
-        @Schema(description = "Error type", example = "Not Found", required = true)
+        @Schema(required = true)
         public String error;
         
-        @Schema(description = "Human-readable error message", 
-                example = "Country with alpha2Code 'XX' not found.", 
-                required = true)
+        @Schema(description = "A human-readable description of the error.", required = true)
         public String message;
         
-        @Schema(description = "Request path that caused the error", 
-                example = "/api/v1/countries/code/XX",
-                required = true)
+        @Schema(required = true)
         public String path;
     }
 

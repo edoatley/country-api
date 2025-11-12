@@ -22,6 +22,7 @@ public class OpenApiConfiguration {
     @Bean
     public OpenAPI countryServiceOpenAPI() {
         return new OpenAPI()
+                .openapi("3.0.3")
                 .info(new Info()
                         .title("Country Reference Service API")
                         .description("""
@@ -53,7 +54,7 @@ public class OpenApiConfiguration {
                                 .type(SecurityScheme.Type.APIKEY)
                                 .in(SecurityScheme.In.HEADER)
                                 .name("X-API-KEY")
-                                .description("API Key for authenticating requests")));
+                                .description("API Key for authenticating requests.")));
     }
     
     /**
@@ -115,6 +116,42 @@ public class OpenApiConfiguration {
                 System.err.println("Warning: Could not replace Country schema with CountryDTO: " + e.getMessage());
             }
         };
+    }
+
+    /**
+     * Customizer to normalize query parameters by removing explicit required: false.
+     * This makes the generated spec match the static spec more closely, as query
+     * parameters are optional by default in OpenAPI.
+     */
+    @Bean
+    @Order(2)
+    public OpenApiCustomizer normalizeQueryParametersCustomizer() {
+        return openApi -> {
+            if (openApi.getPaths() != null) {
+                openApi.getPaths().forEach((path, pathItem) -> {
+                    if (pathItem != null) {
+                        // Process all operations (GET, POST, PUT, DELETE, etc.)
+                        processOperation(pathItem.getGet());
+                        processOperation(pathItem.getPost());
+                        processOperation(pathItem.getPut());
+                        processOperation(pathItem.getDelete());
+                        processOperation(pathItem.getPatch());
+                    }
+                });
+            }
+        };
+    }
+    
+    private void processOperation(io.swagger.v3.oas.models.Operation operation) {
+        if (operation != null && operation.getParameters() != null) {
+            operation.getParameters().forEach(param -> {
+                if (param != null && "query".equals(param.getIn()) && Boolean.FALSE.equals(param.getRequired())) {
+                    // Remove explicit required: false for query parameters
+                    // This matches the static spec which doesn't include this field
+                    param.setRequired(null);
+                }
+            });
+        }
     }
 
     @Bean

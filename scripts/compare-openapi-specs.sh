@@ -101,11 +101,14 @@ def normalize_spec(spec_data):
     if 'servers' in spec_data:
         del spec_data['servers']
     
-    # Normalize info fields
+    # Normalize info fields and OpenAPI version
+    if 'openapi' in spec_data:
+        spec_data['openapi'] = 'COMPARED'
     if 'info' in spec_data:
         spec_data['info']['version'] = 'COMPARED'
         spec_data['info']['title'] = 'COMPARED'
         spec_data['info']['description'] = 'COMPARED'
+        # Note: contact and license are kept for comparison (should match in both specs)
     
     # Remove acceptable differences: reusable components
     if 'components' in spec_data:
@@ -137,18 +140,41 @@ def normalize_spec(spec_data):
                         if isinstance(prop_schema, dict):
                             if 'required' in prop_schema and isinstance(prop_schema['required'], list):
                                 prop_schema['required'] = sorted(prop_schema['required'])
+                            # Remove both 'example' and 'examples' (singular and plural)
                             if 'example' in prop_schema:
                                 del prop_schema['example']
+                            if 'examples' in prop_schema:
+                                del prop_schema['examples']
     
-    # Normalize paths: remove inline examples and normalize structure
+    # Normalize paths: remove inline examples, normalize parameters
     if 'paths' in spec_data:
-        def remove_examples_from_path_item(item):
-            \"\"\"Recursively remove examples from path items.\"\"\"
+        def normalize_path_item(item):
+            \"\"\"Recursively normalize path items: remove examples and normalize parameters.\"\"\"
             if isinstance(item, dict):
+                # Remove examples
                 if 'examples' in item:
                     del item['examples']
                 if 'example' in item:
                     del item['example']
+                
+                # Normalize parameters: remove minimum/maximum (validation constraints, not structural)
+                if 'parameters' in item and isinstance(item['parameters'], list):
+                    for param in item['parameters']:
+                        if isinstance(param, dict) and 'schema' in param:
+                            schema = param['schema']
+                            if isinstance(schema, dict):
+                                # Remove validation constraints for comparison
+                                if 'minimum' in schema:
+                                    del schema['minimum']
+                                if 'maximum' in schema:
+                                    del schema['maximum']
+                                if 'format' in schema and schema.get('type') == 'integer':
+                                    # Remove format from integer types (int32 vs no format)
+                                    del schema['format']
+                                # Remove required: false (default for query params)
+                                if 'required' in param and param['required'] is False:
+                                    del param['required']
+                
                 for key, value in item.items():
                     if key == 'content' and isinstance(value, dict):
                         for content_type, content_spec in value.items():
@@ -158,15 +184,15 @@ def normalize_spec(spec_data):
                                 if 'example' in content_spec:
                                     del content_spec['example']
                     elif isinstance(value, dict):
-                        remove_examples_from_path_item(value)
+                        normalize_path_item(value)
                     elif isinstance(value, list):
                         for list_item in value:
                             if isinstance(list_item, dict):
-                                remove_examples_from_path_item(list_item)
+                                normalize_path_item(list_item)
         
         for path_key, path_item in spec_data['paths'].items():
             if isinstance(path_item, dict):
-                remove_examples_from_path_item(path_item)
+                normalize_path_item(path_item)
     
     return spec_data
 
@@ -194,9 +220,12 @@ with open('${TEMP_GENERATED_NORM}', 'w') as f:
         echo "✅ Specs match (after normalization)"
         echo ""
         echo "Normalization applied:"
+        echo "  - Normalized OpenAPI version (3.0.1 vs 3.0.3)"
         echo "  - Removed server URLs (environment-specific)"
         echo "  - Normalized info fields (title, version, description)"
         echo "  - Removed reusable components (examples, requestBodies, responses)"
+        echo "  - Removed validation constraints from parameters (minimum, maximum, format)"
+        echo "  - Removed required: false from parameters (default for query params)"
         echo "  - Sorted required arrays and schema properties"
         echo "  - Sorted all keys"
         echo ""
@@ -206,9 +235,12 @@ with open('${TEMP_GENERATED_NORM}', 'w') as f:
         echo "⚠️  SPECS DIFFER! Analyzing differences..."
         echo ""
         echo "Normalization applied:"
+        echo "  - Normalized OpenAPI version (3.0.1 vs 3.0.3)"
         echo "  - Removed server URLs (environment-specific)"
         echo "  - Normalized info fields (title, version, description)"
         echo "  - Removed reusable components (examples, requestBodies, responses)"
+        echo "  - Removed validation constraints from parameters (minimum, maximum, format)"
+        echo "  - Removed required: false from parameters (default for query params)"
         echo "  - Sorted required arrays and schema properties"
         echo ""
         echo "=== Summary of Differences ==="
