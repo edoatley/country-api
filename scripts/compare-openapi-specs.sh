@@ -116,9 +116,13 @@ def normalize_spec(spec_data):
         if 'responses' in spec_data['components']:
             del spec_data['components']['responses']
         
-        # Normalize schemas: sort required arrays and properties
+        # Normalize schemas: sort required arrays and properties, remove examples
         if 'schemas' in spec_data['components']:
             for schema_name, schema in spec_data['components']['schemas'].items():
+                # Remove example fields (they may differ in structure/location)
+                if 'example' in schema:
+                    del schema['example']
+                
                 # Sort required array if it exists
                 if 'required' in schema and isinstance(schema['required'], list):
                     schema['required'] = sorted(schema['required'])
@@ -128,11 +132,41 @@ def normalize_spec(spec_data):
                     sorted_props = dict(sorted(schema['properties'].items()))
                     schema['properties'] = sorted_props
                     
-                    # Also sort required arrays in nested schemas
+                    # Also sort required arrays and remove examples in nested schemas
                     for prop_name, prop_schema in sorted_props.items():
-                        if isinstance(prop_schema, dict) and 'required' in prop_schema:
-                            if isinstance(prop_schema['required'], list):
+                        if isinstance(prop_schema, dict):
+                            if 'required' in prop_schema and isinstance(prop_schema['required'], list):
                                 prop_schema['required'] = sorted(prop_schema['required'])
+                            if 'example' in prop_schema:
+                                del prop_schema['example']
+    
+    # Normalize paths: remove inline examples and normalize structure
+    if 'paths' in spec_data:
+        def remove_examples_from_path_item(item):
+            \"\"\"Recursively remove examples from path items.\"\"\"
+            if isinstance(item, dict):
+                if 'examples' in item:
+                    del item['examples']
+                if 'example' in item:
+                    del item['example']
+                for key, value in item.items():
+                    if key == 'content' and isinstance(value, dict):
+                        for content_type, content_spec in value.items():
+                            if isinstance(content_spec, dict):
+                                if 'examples' in content_spec:
+                                    del content_spec['examples']
+                                if 'example' in content_spec:
+                                    del content_spec['example']
+                    elif isinstance(value, dict):
+                        remove_examples_from_path_item(value)
+                    elif isinstance(value, list):
+                        for list_item in value:
+                            if isinstance(list_item, dict):
+                                remove_examples_from_path_item(list_item)
+        
+        for path_key, path_item in spec_data['paths'].items():
+            if isinstance(path_item, dict):
+                remove_examples_from_path_item(path_item)
     
     return spec_data
 
