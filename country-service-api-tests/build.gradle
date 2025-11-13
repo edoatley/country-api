@@ -113,3 +113,57 @@ task testStaging(type: Test) {
     }
 }
 
+// Task to run performance tests against local application
+task testPerformanceLocal(type: Test) {
+    useJUnitPlatform {
+        includeTags 'performance'
+    }
+    systemProperty 'api.test.base.url', 'http://localhost:8080'
+    systemProperty 'api.test.api.key', 'default-test-key'
+    description = 'Runs performance tests against local application (requires app to be running)'
+    group = 'verification'
+    
+    // Enhanced test logging for better debugging
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+        showStandardStreams = true
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+    }
+}
+
+// Task to run performance tests against staging environment
+task testPerformanceStaging(type: Test) {
+    useJUnitPlatform {
+        includeTags 'performance'
+    }
+    // These should be set via environment variables or system properties
+    systemProperty 'api.test.base.url', System.getProperty('api.test.base.url',
+            System.getenv().getOrDefault('API_TEST_BASE_URL', ''))
+    systemProperty 'api.test.api.key', System.getProperty('api.test.api.key',
+            System.getenv().getOrDefault('API_TEST_API_KEY', ''))
+    description = 'Runs performance tests against staging environment (requires API_TEST_BASE_URL and API_TEST_API_KEY)'
+    group = 'verification'
+    
+    // Enhanced test logging for better debugging
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+        showStandardStreams = true
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+    }
+    
+    doFirst {
+        if (!System.getProperty('api.test.base.url') && !System.getenv('API_TEST_BASE_URL')) {
+            throw new GradleException('API_TEST_BASE_URL must be set for staging performance tests')
+        }
+        if (!System.getProperty('api.test.api.key') && !System.getenv('API_TEST_API_KEY')) {
+            throw new GradleException('API_TEST_API_KEY must be set for staging performance tests')
+        }
+    }
+}
+

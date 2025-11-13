@@ -18,8 +18,15 @@ if [ -z "$ENVIRONMENT" ] || [ -z "$REGION" ]; then
   exit 1
 fi
 
+# Use AWS_PROFILE if set, otherwise use default profile
+# This script respects the profile set by the caller
+PROFILE_ARG=""
+if [ -n "$AWS_PROFILE" ]; then
+  PROFILE_ARG="--profile $AWS_PROFILE"
+fi
+
 echo "Checking for CloudFormation stack: $STACK_NAME" >&2
-if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$REGION" >/dev/null 2>&1; then
+if ! aws cloudformation describe-stacks $PROFILE_ARG --stack-name "$STACK_NAME" --region "$REGION" >/dev/null 2>&1; then
   echo "❌ Error: CloudFormation stack '$STACK_NAME' not found" >&2
   echo "The deployment step should have created this stack. Check deployment logs above." >&2
   exit 1
@@ -30,6 +37,7 @@ fi
 if [ "$ENVIRONMENT" = "staging" ]; then
   # Try ApiGatewayRootUrl first
   API_GATEWAY_ROOT_URL=$(aws cloudformation describe-stacks \
+    $PROFILE_ARG \
     --stack-name "$STACK_NAME" \
     --region "$REGION" \
     --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayRootUrl`].OutputValue' \
@@ -44,6 +52,7 @@ fi
 
 # Fallback to ApiGatewayUrl
 API_GATEWAY_URL=$(aws cloudformation describe-stacks \
+  $PROFILE_ARG \
   --stack-name "$STACK_NAME" \
   --region "$REGION" \
   --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl`].OutputValue' \
@@ -53,6 +62,7 @@ if [ -z "$API_GATEWAY_URL" ] || [ "$API_GATEWAY_URL" = "None" ]; then
   echo "❌ Error: API Gateway URL not found in stack outputs" >&2
   echo "Stack outputs:" >&2
   aws cloudformation describe-stacks \
+    $PROFILE_ARG \
     --stack-name "$STACK_NAME" \
     --region "$REGION" \
     --query 'Stacks[0].Outputs' \
