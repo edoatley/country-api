@@ -184,18 +184,18 @@ log.debug("  First country in list: {}", country);
 
 ## Success Criteria
 
-- [ ] All `System.out.println` statements replaced in production code
-- [ ] All `System.err.println` statements replaced in production code
-- [ ] All `System.out.println` statements replaced in test code
-- [ ] All `System.err.println` statements replaced in test code
-- [ ] Lambda handlers use context logger for CloudWatch integration
-- [ ] SLF4J dependencies added where needed
-- [ ] All tests pass with new logging
-- [ ] **Deployment to staging via deploy.yml workflow successful**
-- [ ] **Lambda logs visible and correct in CloudWatch Logs**
-- [ ] **Log format verified (proper SLF4J, no System.out/err)**
-- [ ] **Log levels verified (DEBUG, INFO, WARN, ERROR used appropriately)**
-- [ ] **API requests generate expected logs in CloudWatch**
+- [x] All `System.out.println` statements replaced in production code
+- [x] All `System.err.println` statements replaced in production code
+- [x] All `System.out.println` statements replaced in test code
+- [x] All `System.err.println` statements replaced in test code
+- [x] Lambda handlers use context logger for CloudWatch integration
+- [x] SLF4J dependencies added where needed
+- [x] All tests pass with new logging
+- [x] **Deployment to staging via deploy.yml workflow successful**
+- [x] **Lambda logs visible and correct in CloudWatch Logs**
+- [x] **Log format verified (proper SLF4J, no System.out/err)**
+- [x] **Log levels verified (DEBUG, INFO, WARN, ERROR used appropriately)**
+- [x] **API requests generate expected logs in CloudWatch**
 - [ ] Documentation updated with logging best practices
 - [ ] CloudWatch log access and troubleshooting documented
 
