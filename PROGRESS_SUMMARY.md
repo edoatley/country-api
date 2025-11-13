@@ -1,7 +1,7 @@
 # Country Reference Service - Progress Summary
 
 ## Overview
-This document summarizes progress across completed sprints (0-15) and current state of the Country Reference Service implementation.
+This document summarizes progress across completed sprints (0-16) and current state of the Country Reference Service implementation.
 
 ---
 
@@ -468,6 +468,31 @@ This document summarizes progress across completed sprints (0-15) and current st
 
 ---
 
+## Sprint 16: Logging Refactoring (`16-logging-refactoring`)
+**Status:** ✅ Complete
+
+### Achievements
+- **Production Code:**
+  - Replaced all `System.out.println`/`System.err.println` in `ApiGatewayLambdaHandler.java` with SLF4J/Lambda context logger
+  - Replaced `System.err.println` in `OpenApiConfiguration.java` with SLF4J logger
+  - Added SLF4J dependency to `country-service-adapters` module
+  - Lambda handlers use context logger for CloudWatch integration
+- **Test Code:**
+  - Replaced all println statements in `BaseApiTest.java`, `CountryApiTest.java`, and `CountrySerializationTest.java` with SLF4J logger
+  - Added SLF4J dependencies to test modules (`country-service-api-tests` and `country-service-adapters`)
+  - Used appropriate log levels: DEBUG for verbose output, INFO for important info, WARN for warnings, ERROR for errors
+- **Deployment & Verification:**
+  - Deployed to staging via deploy.yml workflow (tag v1.0.30)
+  - Verified Lambda logs in CloudWatch Logs
+  - Confirmed log format (proper SLF4J, no System.out/err)
+  - Verified log levels (DEBUG, INFO, WARN, ERROR)
+  - Tested API requests and confirmed logs appear correctly
+- **Documentation:**
+  - `docs/SPRINT_16_PLAN.md` - Comprehensive plan and status
+  - Updated PROGRESS_SUMMARY.md with Sprint 16 achievements
+
+---
+
 ## Current State Summary
 
 ### ✅ Completed Components
@@ -506,24 +531,30 @@ This document summarizes progress across completed sprints (0-15) and current st
 | **OpenAPI Validation** | ✅ Complete | Spec comparison and normalization scripts |
 | **Deployment Optimization** | ✅ Complete | CloudFormation GitHub Action integration |
 
-### 🔄 Next Steps (Sprint 16+)
+### 🔄 Next Steps (Sprint 17+)
 
-1. **Logging Refactoring (Sprint 16):**
-   - Replace `System.out`/`System.err` with SLF4J in production code
-   - Replace `System.out`/`System.err` with SLF4J in test code
-   - Use Lambda context logger in Lambda handlers for CloudWatch integration
-   - Update documentation with logging best practices
-   - See `docs/SPRINT_16_PLAN.md` for detailed implementation plan
+1. **Performance Validation (Sprint 17 - Recommended):**
+   - Add performance tests to API test suite
+   - Measure response times for all endpoints
+   - Document performance characteristics
+   - Validate <200ms response time requirement from PRD
+   - See `docs/REQUIREMENTS_GAP_ANALYSIS.md` for details
 
-2. **JUnit 6 Upgrade (Future):**
+2. **OpenAPI Contract Validation (Phase 3-4):**
+   - Enhanced validation (validate all endpoints documented, validate schemas match)
+   - Documentation updates for validation process
+   - See `docs/SPRINT_15_PLAN.md` for remaining work
+
+3. **Documentation Updates:**
+   - Add logging best practices to Developer Guide
+   - Document CloudWatch log access and troubleshooting
+   - Update PROGRESS_SUMMARY.md with Sprint 16 achievements
+
+4. **JUnit 6 Upgrade (Future - requires Gradle 9.0+):**
    - Upgrade Gradle to 9.0+ (required for JUnit 6)
    - Update Shadow plugin to new GradleUp version
    - Upgrade JUnit to 6.0.0
-   - Update build scripts for Gradle 9 compatibility
-
-3. **OpenAPI Contract Validation (Phase 3-4):**
-   - Enhanced validation (validate all endpoints documented, validate schemas match)
-   - Documentation updates for validation process
+   - See `docs/JUNIT_6_UPGRADE_PLAN.md` for detailed plan
 
 ---
 
@@ -592,4 +623,5 @@ This document summarizes progress across completed sprints (0-15) and current st
 13. `13-openapi-alignment` → Merged (Sprint 13)
 14. `14-deployment-optimization` → Merged (Sprint 14)
 15. `15-openapi-contract-validation` → Merged (Sprint 15)
+16. `16-logging-refactoring` → Merged (Sprint 16)
 
