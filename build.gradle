@@ -28,7 +28,7 @@ subprojects {
         // TODO: Upgrade to JUnit 6.0.0 - requires Gradle 9.0+ and build script updates
         if (!project.name.contains('bootstrap') && !project.name.contains('adapters') && !project.name.contains('application')) {
             // Only apply to domain module (modules without Spring Boot BOM)
-            testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
+            testImplementation 'org.junit.jupiter:junit-jupiter:6.0.1'
             testImplementation 'org.junit.platform:junit-platform-launcher:1.12.2' // Explicit for version alignment
             testImplementation 'org.mockito:mockito-core:5.20.0'
             testImplementation 'org.mockito:mockito-junit-jupiter:5.20.0'
