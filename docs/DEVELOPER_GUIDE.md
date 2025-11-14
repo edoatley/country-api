@@ -245,6 +245,44 @@ Tests are tagged using JUnit 5 `@Tag`:
 - **Unit tests**: No tag (run by default)
 - **Integration tests**: `@Tag("integration")` (excluded by default, run with `./gradlew integrationTest`)
 - **API tests**: `@Tag("api")` (run against deployed applications, use `./gradlew :country-service-api-tests:testLocal`)
+- **Performance tests**: `@Tag("performance")` (run with `./gradlew :country-service-api-tests:testPerformanceLocal` or `testPerformanceStaging`)
+
+### Performance Testing
+
+Performance tests validate the PRD requirement: "API responses must be fast (<200ms in normal use, locally or in dev cluster)".
+
+**Running Performance Tests:**
+
+**Local Environment:**
+```bash
+# Automated script (recommended)
+./scripts/local-performance-test.sh
+
+# Or manually
+./gradlew :country-service-api-tests:testPerformanceLocal
+```
+
+**Staging Environment:**
+```bash
+# Automated script (recommended)
+./scripts/test-performance-staging.sh
+
+# Or manually (requires API_TEST_BASE_URL and API_TEST_API_KEY)
+./gradlew :country-service-api-tests:testPerformanceStaging
+```
+
+**Performance Thresholds:**
+- **Local**: 200ms (matches PRD requirement for local/dev cluster)
+- **Staging/Remote**: 1000ms (accounts for network latency, API Gateway, Lambda overhead)
+- Thresholds are automatically selected based on the API URL
+- Can be overridden via system property: `api.test.performance.max.response.time.ms`
+
+**Test Coverage:**
+- All 8 API endpoints are tested
+- Tests include warm-up requests to account for cold starts
+- Response times are logged with environment type and threshold
+
+See [`country-service-api-tests/README.md`](../country-service-api-tests/README.md) and [`docs/SPRINT_17_PERFORMANCE_RESULTS.md`](SPRINT_17_PERFORMANCE_RESULTS.md) for detailed information.
 
 ### OpenAPI Contract Validation
 

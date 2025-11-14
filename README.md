@@ -51,12 +51,19 @@ See [Architecture Decision Records](capabilities/ADRs/README.md) for detailed ar
 
 4. **Set environment variables:**
    ```bash
+   # Option 1: Use AWS profile (recommended if configured)
+   # Configure a 'localstack' profile in ~/.aws/config pointing to LocalStack
+   export AWS_PROFILE=localstack
+   
+   # Option 2: Use endpoint URL (fallback for CI/CD)
    export AWS_ENDPOINT_URL=http://localhost:4566
    export AWS_ACCESS_KEY_ID=test
    export AWS_SECRET_ACCESS_KEY=test
    export AWS_REGION=us-east-1
    export API_KEY=default-test-key
    ```
+   
+   **Note:** Scripts prefer AWS profiles over environment variables to avoid conflicts between local and staging environments.
 
 5. **Set up DynamoDB table and seed data** (optional, but recommended for testing):
    ```bash
@@ -108,6 +115,7 @@ All endpoints require the `X-API-KEY` header for authentication.
 - [User API Guide](docs/USER_API_GUIDE.md) – Comprehensive API documentation with examples
 - [Integration Samples](docs/INTEGRATION_SAMPLES.md) – Code samples for various languages and tools
 - [Developer Guide](docs/DEVELOPER_GUIDE.md) – Architecture and development documentation
+- [Performance Test Results](docs/SPRINT_17_PERFORMANCE_RESULTS.md) – Performance validation results and thresholds
 - [OpenAPI Specification](openapi.yml) – Complete API contract
 
 ## Local Development
@@ -119,6 +127,11 @@ All endpoints require the `X-API-KEY` header for authentication.
 - **Architecture tests:** `./gradlew test` (ArchUnit boundary enforcement)
 - **Code coverage:** `./gradlew test jacocoRootReport` (generates HTML and XML coverage reports)
 - **API tests (deployment):** `./gradlew :country-service-api-tests:testLocal` (requires app running locally)
+  - See [`country-service-api-tests/README.md`](country-service-api-tests/README.md) for details
+- **Performance tests:** 
+  - Local: `./scripts/local-performance-test.sh` or `./gradlew :country-service-api-tests:testPerformanceLocal`
+  - Staging: `./scripts/test-performance-staging.sh` or `./gradlew :country-service-api-tests:testPerformanceStaging`
+  - Validates response times: <200ms (local) or <1000ms (staging/remote)
   - See [`country-service-api-tests/README.md`](country-service-api-tests/README.md) for details
 
 ### LocalStack Setup
@@ -218,14 +231,15 @@ See [Lambda Deployment Guide](docs/LAMBDA_DEPLOYMENT.md) for detailed deployment
 ## Technology Stack
 
 - **Java 21** – Latest LTS version
-- **Gradle** – Build tool with multi-module support
-- **Spring Boot 3.2** – REST framework
+- **Gradle 8.10.2** – Build tool with multi-module support
+- **Spring Boot 3.5.7** – REST framework
 - **AWS SDK v2** – DynamoDB client
 - **DynamoDB** – Versioned single-table storage
 - **LocalStack** – Local AWS service emulation
 - **Testcontainers** – Integration testing
 - **ArchUnit** – Architecture enforcement
-- **JUnit 5** – Testing framework
+- **JUnit 5.12.2** – Testing framework
+- **RestAssured** – API testing framework
 
 ## Contributing
 

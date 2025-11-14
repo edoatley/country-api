@@ -41,13 +41,35 @@ echo "$APP_PID" > "$SCRIPT_DIR/.app.pid"
 
 # Wait for application to be ready
 echo "⏳ Waiting for application to start..."
-timeout 120 bash -c 'until curl -s http://localhost:8080/actuator/health | grep -q "\"status\":\"UP\""; do sleep 2; done' || {
-    echo "❌ Application failed to start within 120 seconds"
-    echo "=== Application logs ==="
-    tail -100 "$LOG_FILE" || true
-    kill $APP_PID 2>/dev/null || true
-    exit 1
-}
+# Cross-platform timeout: use timeout command if available, otherwise use a loop
+if command -v timeout >/dev/null 2>&1; then
+    # Linux: use timeout command
+    timeout 120 bash -c 'until curl -s http://localhost:8080/actuator/health | grep -q "\"status\":\"UP\""; do sleep 2; done' || {
+        echo "❌ Application failed to start within 120 seconds"
+        echo "=== Application logs ==="
+        tail -100 "$LOG_FILE" || true
+        kill $APP_PID 2>/dev/null || true
+        exit 1
+    }
+else
+    # macOS/BSD: use a loop with elapsed time check
+    MAX_WAIT=120
+    ELAPSED=0
+    while [ $ELAPSED -lt $MAX_WAIT ]; do
+        if curl -s http://localhost:8080/actuator/health | grep -q "\"status\":\"UP\""; then
+            break
+        fi
+        sleep 2
+        ELAPSED=$((ELAPSED + 2))
+    done
+    if [ $ELAPSED -ge $MAX_WAIT ]; then
+        echo "❌ Application failed to start within 120 seconds"
+        echo "=== Application logs ==="
+        tail -100 "$LOG_FILE" || true
+        kill $APP_PID 2>/dev/null || true
+        exit 1
+    fi
+fi
 
 echo "✅ Application is ready (PID: $APP_PID)"
 

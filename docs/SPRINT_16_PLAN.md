@@ -175,7 +175,7 @@ log.debug("  First country in list: {}", country);
 ### Phase 4: Documentation
 **Estimated Time:** 30 minutes
 
-1. Update `docs/LOGGING_REFACTOR_PLAN.md` to mark items as complete
+1. Update `docs/archive/LOGGING_REFACTOR_PLAN.md` to mark items as complete (archived)
 2. Add logging best practices to `docs/DEVELOPER_GUIDE.md`:
    - When to use different log levels
    - Lambda logging best practices
@@ -286,6 +286,6 @@ curl -H "X-API-KEY: <api-key>" \
 - [SLF4J Documentation](http://www.slf4j.org/manual.html)
 - [AWS Lambda Logging Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/java-logging.html)
 - [CloudWatch Logs Console](https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups)
-- Current logging refactor plan: `docs/LOGGING_REFACTOR_PLAN.md`
+- Current logging refactor plan: `docs/archive/LOGGING_REFACTOR_PLAN.md` (archived)
 - Deployment workflow: `.github/workflows/deploy.yml`
 

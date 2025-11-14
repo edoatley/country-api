@@ -46,10 +46,18 @@ Use this checklist to go from clone to running, testing, and deploying locally.
    - `./gradlew integrationTest` (explicitly run integration tests)
 7. **Verify DynamoDB repository works:**
    - Tests in `country-service-adapters` validate full persistence layer
+8. **Run API tests (optional):**
+   - `./gradlew :country-service-api-tests:testLocal` (requires app running)
+   - See [`country-service-api-tests/README.md`](../country-service-api-tests/README.md) for details
+9. **Run performance tests (optional):**
+   - Local: `./scripts/local-performance-test.sh` (automated setup and testing)
+   - Or manually: `./gradlew :country-service-api-tests:testPerformanceLocal`
+   - See [`docs/SPRINT_17_PERFORMANCE_RESULTS.md`](../docs/SPRINT_17_PERFORMANCE_RESULTS.md) for details
 
 ## Next Steps (Future Sprints)
-- Deployment API test suite (tests against deployed API)
-- Performance and security testing
+- ✅ Deployment API test suite (completed in Sprint 12)
+- ✅ Performance testing (completed in Sprint 17)
+- Security testing (future enhancement)
 
 ## Troubleshooting
 - Gradle or Java errors: verify JDK 21 in use (check `java -version`)
