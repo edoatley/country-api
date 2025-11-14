@@ -200,7 +200,7 @@ void testListCountriesPerformance() {
 
 ## References
 - `docs/REQUIREMENTS_GAP_ANALYSIS.md` - Performance validation recommendation
-- `docs/SPRINT_17_HANDOFF.md` - Sprint 17 handoff document
+- `docs/archive/SPRINT_17_HANDOFF.md` - Sprint 17 handoff document (archived)
 - `PRODUCT_REQUIREMENTS.md` - PRD with <200ms requirement
 - `country-service-api-tests/README.md` - API test documentation
 

@@ -17,6 +17,12 @@ This directory contains documentation files that are no longer actively maintain
 
 **Status:** These documents were created during debugging of a serialization issue in the Lambda handler. The issue has been resolved, and the current implementation is documented in the main documentation.
 
+### Completed Sprint Documents
+- **SPRINT_17_HANDOFF.md** - Handoff document for Sprint 17 (Performance Validation)
+- **LOGGING_REFACTOR_PLAN.md** - Planning document for logging refactoring (completed in Sprint 16)
+
+**Status:** These documents were used during active development but are no longer needed since the work is complete. Historical sprint plans remain in `docs/` for reference.
+
 ## Current Documentation
 
 For current, up-to-date documentation, see:
