@@ -269,7 +269,7 @@ jobs:
       - name: Publish Test Report
         # This step runs even if the previous "Run tests" step failed
         if: always()
-        uses: mikepenz/action-junit-report@v4
+        uses: mikepenz/action-junit-report@v6
         with:
           # A name for the check run that will be created
           check_name: API Test Report (Staging)
@@ -417,7 +417,7 @@ jobs:
       - name: Publish Test Report
         # This step runs even if the previous "Run tests" step failed
         if: always()
-        uses: mikepenz/action-junit-report@v4
+        uses: mikepenz/action-junit-report@v6
         with:
           # A name for the check run that will be created
           check_name: API Test Report (Production)
