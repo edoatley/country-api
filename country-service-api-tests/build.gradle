@@ -30,8 +30,8 @@ dependencies {
     testImplementation 'org.awaitility:awaitility:4.3.0'
     
     // SLF4J for logging in tests
-    testImplementation 'org.slf4j:slf4j-api:2.0.16'
-    testImplementation 'org.slf4j:slf4j-simple:2.0.16'
+    testImplementation 'org.slf4j:slf4j-api:2.0.17'
+    testImplementation 'org.slf4j:slf4j-simple:2.0.17'
 }
 
 test {
