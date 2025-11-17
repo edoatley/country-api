@@ -21,7 +21,7 @@ dependencies {
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.14'
     
     // AWS SDK managed by BOM (latest version)
-    implementation platform('software.amazon.awssdk:bom:2.38.3')
+    implementation platform('software.amazon.awssdk:bom:2.38.7')
     implementation 'software.amazon.awssdk:dynamodb'
     
     // Spring Boot test starter (includes JUnit, Mockito, etc.)

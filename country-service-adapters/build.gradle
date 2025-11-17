@@ -14,7 +14,7 @@ dependencies {
     implementation project(':country-service-application')
     
     // AWS SDK managed by BOM (latest version)
-    implementation platform('software.amazon.awssdk:bom:2.38.3')
+    implementation platform('software.amazon.awssdk:bom:2.38.7')
     implementation 'software.amazon.awssdk:dynamodb'
     
     // Spring dependencies managed by Spring Boot BOM
