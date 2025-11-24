@@ -31,7 +31,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -84,7 +84,7 @@ jobs:
       name: staging
     
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
@@ -286,7 +286,7 @@ jobs:
       name: production
     
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
